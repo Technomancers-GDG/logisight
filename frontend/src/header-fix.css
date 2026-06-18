@@ -1,0 +1,89 @@
+/* --- PREMIUM BENTO HEADER STYLES --- */
+.top-bar {
+    background: var(--dark-panel, #1e1e1e) !important;
+    border-radius: 24px !important;
+    padding: 12px 24px !important;
+    margin-bottom: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+.top-bar-left h1 {
+    color: white !important;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    margin: 0 !important;
+}
+
+.prototype-badge {
+    background: rgba(234, 248, 107, 0.15) !important;
+    color: #eaf86b !important;
+    border: 1px solid rgba(234, 248, 107, 0.3) !important;
+    font-weight: 700 !important;
+}
+
+.user-chip {
+    background: rgba(255,255,255,0.1) !important;
+    border-radius: 100px !important;
+    padding: 4px 6px 4px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.user-name {
+    color: white !important;
+    font-weight: 500 !important;
+}
+
+.logout-btn {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+    border: none !important;
+    border-radius: 100px !important;
+    padding: 6px 14px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Status Bar Glassmorphism Premium */
+.status-bar {
+    background: white !important;
+    border-radius: 20px !important;
+    padding: 16px 24px !important;
+    margin-bottom: 24px !important;
+    display: flex !important;
+    gap: 24px !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    border: 1px solid rgba(0,0,0,0.04) !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.03) !important;
+}
+
+.status-bar span, .status-bar strong {
+    font-size: 0.95rem !important;
+    color: #111 !important;
+}
+
+.status-bar .status-indicator {
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+    margin-right: 8px !important;
+    background: #10b981 !important;
+    box-shadow: 0 0 8px #10b981 !important;
+}
+
+.sim-btn {
+    border-radius: 100px !important;
+    font-weight: 600 !important;
+    padding: 8px 18px !important;
+}

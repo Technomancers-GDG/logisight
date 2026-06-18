@@ -1,0 +1,13 @@
+{
+  "projects": {},
+  "targets": {
+    "gsc-2026-133ee": {
+      "hosting": {
+        "driver": [
+          "gsc-2026-driver"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

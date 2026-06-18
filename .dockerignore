@@ -1,0 +1,27 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+
+# Local node modules and dists should be ignored
+node_modules/
+frontend/node_modules/
+frontend/dist/
+driver-app-main/node_modules/
+driver-app-main/dist/
+
+# Ignored directories
+.git/
+.vscode/
+tests/
+
+# Ignored binary and DB files
+*.db
+*.db-shm
+*.db-wal
+*.xlsx
+
+# Log files
+backend.log
+backend2.log
+error.txt

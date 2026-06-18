@@ -1,0 +1,43 @@
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.panel-head h2 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.panel-head-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.panel.compact {
+  padding: 12px;
+}
+
+.panel.flat {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+@media (min-width: 769px) {
+  .panel {
+    padding: 20px;
+  }
+}

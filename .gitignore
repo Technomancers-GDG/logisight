@@ -1,0 +1,38 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+.pytest_cache/
+pytest-cache-files-*/
+node_modules/
+frontend/dist/
+driver-app-main/dist/
+sc/
+
+# Virtual environment
+.venv/
+
+# Environment files
+.env
+.env.local
+# .env.production is intentionally tracked (Firebase client keys are public by design)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage
+.coverage
+htmlcov/
+coverage/
+
+# Logs
+*.log
+firebase-service-account.json
+"firebase-service-account.json" 

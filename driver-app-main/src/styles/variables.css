@@ -1,0 +1,53 @@
+:root {
+  /* --- Brand --- */
+  --accent: #b9ff66;
+  --accent-hover: #a0e64d;
+  --accent-subtle: rgba(185, 255, 102, 0.12);
+
+  /* --- Surfaces --- */
+  --bg: #f8f9fc;
+  --panel: #ffffff;
+  --panel-hover: #fafbfd;
+  --panel-strong: #f0f1f5;
+  --overlay: rgba(0, 0, 0, 0.4);
+
+  /* --- Borders --- */
+  --border: #e2e4e9;
+  --border-strong: #c8cad0;
+
+  /* --- Text --- */
+  --text: #191a23;
+  --text-secondary: #5e5f6b;
+  --muted: #8e8f9a;
+  --inverse: #ffffff;
+
+  /* --- Semantic --- */
+  --success: #22c55e;
+  --success-bg: #dcfce7;
+  --warning: #f59e0b;
+  --warning-bg: #fef3c7;
+  --danger: #ef4444;
+  --danger-bg: #fee2e2;
+  --info: #3b82f6;
+  --info-bg: #dbeafe;
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+  /* --- Radii --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* --- Typography --- */
+  --font-heading: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Inter", "Space Grotesk", sans-serif;
+
+  /* --- Sizing --- */
+  --nav-height: 64px;
+  --header-height: 72px;
+  --max-width: 1200px;
+}
