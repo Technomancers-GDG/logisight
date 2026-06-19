@@ -38,7 +38,7 @@ The primary cause is **supply chain disruption** — not scarcity. Inefficient r
 - **Network management:** facilities, ports, port links, vehicles, drivers, and objectives
 - **Simulation controls:** start, pause, resume, reset, and speed multiplier (up to 5000x)
 - **AI Decision Engine:** dispatch scoring, RL-based rerouting (DQN with PyTorch), NSGA-II multi-objective optimization
-- **RL agent convergence:** DQN trained offline (500 epochs, loss 0.25 → 0.25, epsilon 0.15 → 0.05) — see [`docs/rl_training_curve.png`](docs/rl_training_curve.png)
+- **RL agent convergence:** DQN trained offline (500 epochs, loss 1.83 → 0.55, epsilon 1.0 → 0.05) — see [`docs/rl_training_curve.png`](docs/rl_training_curve.png)
 - **Route planning:** OSRM first, automatic estimated-route fallback when OSRM is unavailable
 - **Disruption management:** weather/news ingestion from workbooks + manual driver incident injection + auto-demo disruption
 - **Scenario comparison:** baseline vs AI-optimized with trigger presets

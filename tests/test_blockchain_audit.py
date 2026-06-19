@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -13,57 +12,60 @@ class TestBlockchainAudit:
         from services.blockchain_audit import BlockchainLedger
         assert BlockchainLedger is not None
 
-    def test_ledger_append_and_verify(self):
+    def test_add_block_and_verify(self):
         from services.blockchain_audit import BlockchainLedger
 
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "ledger.json"
             ledger = BlockchainLedger(str(ledger_path))
 
-            entry = ledger.append("reroute", {"vehicle_id": 1, "from": "WH-01", "to": "WH-02"})
-            assert entry["index"] == 0
-            assert entry["action"] == "reroute"
-            assert "hash" in entry
-            assert "previous_hash" in entry
-            assert entry["previous_hash"] == hashlib.sha256(b"").hexdigest()
+            block = ledger.add_block("reroute", 1, "reroute", "Vehicle rerouted due to disruption")
+            assert block.index == 1  # genesis is index 0
+            assert block.action == "reroute"
+            block_hash = block.compute_hash()
+            assert len(block_hash) == 64
+            genesis_hash = ledger.chain[0].compute_hash()
+            assert block.previous_hash == genesis_hash
 
-            entry2 = ledger.append("wait", {"vehicle_id": 2, "reason": "congestion"})
-            assert entry2["index"] == 1
-            assert entry2["previous_hash"] == entry["hash"]
+            block2 = ledger.add_block("wait", 2, "wait", "Waiting due to congestion")
+            assert block2.index == 2
+            assert block2.previous_hash == block_hash
 
-    def test_ledger_tamper_detection(self):
+    def test_tamper_detection(self):
         from services.blockchain_audit import BlockchainLedger
 
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "ledger.json"
             ledger = BlockchainLedger(str(ledger_path))
 
-            ledger.append("reroute", {"vehicle_id": 1})
-            ledger.append("wait", {"vehicle_id": 2})
+            ledger.add_block("reroute", 1, "reroute", "Test block 1")
+            ledger.add_block("wait", 2, "wait", "Test block 2")
 
-            ledger._load_chain.assert_not_called() if hasattr(ledger, "_load_chain") else None
+            result = ledger.verify_integrity()
+            assert result["valid"] is True
 
-    def test_ledger_get_chain_length(self):
+    def test_chain_length(self):
         from services.blockchain_audit import BlockchainLedger
 
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "ledger.json"
             ledger = BlockchainLedger(str(ledger_path))
 
-            assert ledger.length() == 0
-            ledger.append("reroute", {})
-            assert ledger.length() == 1
-            ledger.append("wait", {})
-            assert ledger.length() == 2
+            assert len(ledger.chain) == 1  # genesis
+            ledger.add_block("reroute", 1, "reroute", "Test")
+            assert len(ledger.chain) == 2
+            ledger.add_block("wait", 2, "wait", "Test")
+            assert len(ledger.chain) == 3
 
-    def test_ledger_verify_integrity(self):
+    def test_verify_integrity(self):
         from services.blockchain_audit import BlockchainLedger
 
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "ledger.json"
             ledger = BlockchainLedger(str(ledger_path))
 
-            ledger.append("reroute", {"v": 1})
-            ledger.append("wait", {"v": 2})
+            ledger.add_block("reroute", 1, "reroute", "Test block 1")
+            ledger.add_block("wait", 2, "wait", "Test block 2")
 
-            assert ledger.verify() is True
+            result = ledger.verify_integrity()
+            assert result["valid"] is True

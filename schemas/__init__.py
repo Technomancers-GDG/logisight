@@ -11,7 +11,7 @@ from schemas.driver import (
     DriverProfileBase, DriverProfileCreate, DriverProfileRead,
     DriverInstructionRead, DriverResponseRequest, DriverIncidentCreate,
     DriverIncidentRead, DriverMobileSnapshot, DriverMetricsRead,
-    RecommendationDecisionRequest,
+    RecommendationDecisionRequest, SpotlightRequest,
 )
 from schemas.vehicle import (
     VehicleBase, VehicleCreate, VehicleUpdate, VehicleRead, VehicleStateView,
@@ -26,17 +26,33 @@ from schemas.recommendation import (
 from schemas.news import (
     NewsEventRead, WeatherEventRead, ImportSummary,
 )
+from schemas.client import (
+    DashboardResponse, UploadResult,
+)
+from schemas.integration import (
+    BatchResult, DecisionExport, DriverExport, DriverImport,
+    DriverImportBatch, ErrorDetail, EventImport, EventImportBatch,
+    FacilityExport, FacilityImport, FacilityImportBatch,
+    IncidentExport, IncidentImport, IntegrationSnapshot,
+    IntegrationStatus, InventoryUpdateBatch, MetricsExport,
+    ObjectiveExport, ObjectiveImport, ObjectiveImportBatch,
+    OptimizeDispatchRequest, ShipmentExport, ShipmentImport,
+    ShipmentImportBatch, SimulationDecideRequest, SimulationDecideResponse,
+    VehicleExport, VehicleImport, VehicleImportBatch,
+    WebhookCreate, WebhookDeliveryExport, WebhookExport, WebhookUpdate,
+)
 from schemas.simulation import (
     SimulationControlRequest, SpeedChangeRequest, SimulationStatus,
     FleetScaleRequest, FleetScaleResult, MetricsSnapshotRead, MetricsSummary,
     DashboardSnapshot, ScenarioPresetRead, ScenarioComparisonMetrics,
-    ScenarioComparisonRead,
+    ScenarioComparisonRead, TriggerScenarioRequest,
 )
 from schemas.inventory import (
     RiskForecastRead, InventoryForecastRead, ProactiveDispatchRead,
 )
 from schemas.ai import (
     RLDecisionRequest, RLDecisionResponse,
+    AIChatRequest, AIChatResponse,
 )
 from schemas.blockchain import (
     BlockchainBlockRead, BlockchainVerifyRead,
@@ -69,7 +85,7 @@ __all__ = [
     "DriverProfileBase", "DriverProfileCreate", "DriverProfileRead",
     "DriverInstructionRead", "DriverResponseRequest", "DriverIncidentCreate",
     "DriverIncidentRead", "DriverMobileSnapshot", "DriverMetricsRead",
-    "RecommendationDecisionRequest",
+    "RecommendationDecisionRequest", "SpotlightRequest",
     "VehicleBase", "VehicleCreate", "VehicleUpdate", "VehicleRead",
     "VehicleStateView",
     "ObjectiveBase", "ObjectiveCreate", "ObjectiveUpdate", "ObjectiveRead",
@@ -79,9 +95,10 @@ __all__ = [
     "SimulationControlRequest", "SpeedChangeRequest", "SimulationStatus", "FleetScaleRequest",
     "FleetScaleResult", "MetricsSnapshotRead", "MetricsSummary",
     "DashboardSnapshot", "ScenarioPresetRead", "ScenarioComparisonMetrics",
-    "ScenarioComparisonRead",
+    "ScenarioComparisonRead", "TriggerScenarioRequest",
     "RiskForecastRead", "InventoryForecastRead", "ProactiveDispatchRead",
     "RLDecisionRequest", "RLDecisionResponse",
+    "AIChatRequest", "AIChatResponse",
     "BlockchainBlockRead", "BlockchainVerifyRead",
     "EdgeSyncStatusRead", "CloudHealthRead",
     "NodeType", "TransportMode",
@@ -96,4 +113,15 @@ __all__ = [
     "RerouteRequest", "RerouteResponse",
     "TelemetrySimulationRequest", "TelemetrySimulationResponse",
     "ParetoFrontRead",
+    "DashboardResponse", "UploadResult",
+    "BatchResult", "DecisionExport", "DriverExport", "DriverImport",
+    "DriverImportBatch", "ErrorDetail", "EventImport", "EventImportBatch",
+    "FacilityExport", "FacilityImport", "FacilityImportBatch",
+    "IncidentExport", "IncidentImport", "IntegrationSnapshot",
+    "IntegrationStatus", "InventoryUpdateBatch", "MetricsExport",
+    "ObjectiveExport", "ObjectiveImport", "ObjectiveImportBatch",
+    "OptimizeDispatchRequest", "ShipmentExport", "ShipmentImport",
+    "ShipmentImportBatch", "SimulationDecideRequest", "SimulationDecideResponse",
+    "VehicleExport", "VehicleImport", "VehicleImportBatch",
+    "WebhookCreate", "WebhookDeliveryExport", "WebhookExport", "WebhookUpdate",
 ]

@@ -332,10 +332,9 @@ class RLDecisionEngine:
         }
 
 
-    def seed_pretrained_weights(self) -> None:
-        """Seed the Q-network with pre-trained weights so the model starts
-        with exploitation behavior rather than random exploration.
-        Uses a heuristic-derived weight matrix as a warm-start prior."""
+    def warmstart_weights(self) -> None:
+        """Xavier-uniform warm-start of the Q-network weights so the model
+        begins with sensible initial values rather than pure noise."""
         if self.model_path.exists():
             return
         logger.info("Seeding RL engine with pre-trained weights...")

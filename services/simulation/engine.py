@@ -566,9 +566,9 @@ class SimulationEngine:
                         while self.event_queue and self.event_queue[0].due_at <= self.simulation_time:
                             event = heapq.heappop(self.event_queue)
                             try:
-                                # Commit before dispatch if there are pending updates
+                                # Flush before dispatch so the decision engine sees the latest state
                                 if event.event_type == 'dispatch' and batch_count > 0:
-                                    session.commit()
+                                    session.flush()
                                 
                                 await self._process_event(session, event)
                                 processed += 1

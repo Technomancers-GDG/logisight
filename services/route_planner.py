@@ -118,6 +118,8 @@ class RoutePlanner:
         route_data = None
         if self.use_osrm:
             route_data = self._fetch_osrm_route(origin, destination)
+        if route_data is None and settings.route_use_osmnx:
+            route_data = self._osmnx_route(origin, destination)
         if route_data is None:
             route_data = self._estimated_route(origin, destination)
 
@@ -150,6 +152,8 @@ class RoutePlanner:
         route_data = None
         if self.use_osrm:
             route_data = await self._fetch_osrm_route_async(origin, destination)
+        if route_data is None and settings.route_use_osmnx:
+            route_data = await self._osmnx_route_async(origin, destination)
         if route_data is None:
             route_data = self._estimated_route(origin, destination)
 
@@ -313,6 +317,26 @@ class RoutePlanner:
         except Exception as e:
             self.logger.exception("OSRM request failed: %s URL=%s", e, url)
             return None
+
+    def _osmnx_route(
+        self, origin: Facility, destination: Facility
+    ) -> dict[str, object] | None:
+        """Try to find a route via the pre-loaded OSMnx in-memory graph cache.
+
+        Returns ``None`` when the cache is empty or the route can't be found.
+        """
+        try:
+            from services.osmnx_router import _osmnx_graphs, route_via_osmnx
+            if not _osmnx_graphs:
+                return None
+            return route_via_osmnx(_osmnx_graphs, origin, destination)
+        except Exception:
+            return None
+
+    async def _osmnx_route_async(
+        self, origin: Facility, destination: Facility
+    ) -> dict[str, object] | None:
+        return await asyncio.to_thread(self._osmnx_route, origin, destination)
 
     def _estimated_route(self, origin: Facility, destination: Facility) -> dict[str, object]:
         straight_line = haversine_km(

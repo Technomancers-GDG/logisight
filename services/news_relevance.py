@@ -5,7 +5,6 @@ import logging
 import pickle
 import re
 
-from backend.utils.gemini_client import analyze_news_with_gemini
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -88,14 +87,19 @@ class NewsRelevanceService:
 
         self._trained = True
 
+    def _try_gemini(self, headline: str) -> dict | None:
+        """Lazy-attempt Gemini analysis; silently returns None if unavailable."""
+        try:
+            from backend.utils.gemini_client import analyze_news_with_gemini
+            return analyze_news_with_gemini(headline)
+        except Exception:
+            return None
+
     def predict(self, category: str, headline: str) -> NewsPrediction:
         # Try Gemini-powered analysis first
-        try:
-            gemini_result = analyze_news_with_gemini(headline)
-            if gemini_result is not None:
-                return self._map_gemini_to_prediction(gemini_result)
-        except Exception as exc:
-            logger.error("Gemini prediction failed, falling back to NLP: %s", exc)
+        gemini_result = self._try_gemini(headline)
+        if gemini_result is not None:
+            return self._map_gemini_to_prediction(gemini_result)
 
         # Fallback to existing NLP pipeline
         self.ensure_trained()

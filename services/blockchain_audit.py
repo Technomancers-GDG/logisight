@@ -55,8 +55,8 @@ class BlockchainLedger:
     and is linked to the previous block via SHA-256 hash.
     """
 
-    def __init__(self, chain_path: Path | None = None) -> None:
-        self.chain_path = chain_path or Path(settings.audit_ledger_path)
+    def __init__(self, chain_path: Path | str | None = None) -> None:
+        self.chain_path = Path(chain_path) if chain_path else Path(settings.audit_ledger_path)
         self.chain: list[AuditBlock] = []
         self._load_chain()
         if not self.chain:

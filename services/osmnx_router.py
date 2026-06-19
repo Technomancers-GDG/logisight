@@ -25,6 +25,33 @@ logger = logging.getLogger(__name__)
 _osmnx_graphs: dict[str, object] = {}
 
 
+def route_via_osmnx(
+    graphs: dict[str, object],
+    origin: Facility,
+    destination: Facility,
+) -> dict[str, object] | None:
+    """Module-level helper: find an OSMnx route between two facilities.
+
+    Returns ``None`` when the graph cache is empty or the route can't be found.
+    Delegates to :meth:`OsmnxRouter._route_on_graph` to avoid code duplication.
+    """
+    if not graphs:
+        return None
+    orig_city = str(origin.city).strip().lower()
+    dest_city = str(destination.city).strip().lower()
+    if orig_city != dest_city:
+        return None
+    graph = graphs.get(orig_city)
+    if graph is None:
+        return None
+    router = OsmnxRouter(None)
+    return router._route_on_graph(
+        graph,
+        origin.latitude, origin.longitude,
+        destination.latitude, destination.longitude,
+    )
+
+
 def _load_cached_graphs(graphs_dir: str) -> dict[str, object]:
     """Walk *graphs_dir* for ``.graphml`` files and load them into memory.
 
