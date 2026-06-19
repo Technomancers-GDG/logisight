@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useDriverAuth } from "./hooks/useDriverAuth";
 import { useVehicleData } from "./hooks/useVehicleData";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 
@@ -10,6 +11,7 @@ function AppShell() {
   const { vehicle, login, logout } = useDriverAuth();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const { isOnline, isSimulatedOffline, isBrowserOnline, toggleSimulatedOffline } = useOnlineStatus();
 
   const {
     facilities,
@@ -19,7 +21,7 @@ function AppShell() {
     setRecommendations,
   } = useVehicleData();
 
-  const wsSnapshot = useWebSocket("/ws/operations");
+  const { snapshot: wsSnapshot, isConnected: wsConnected, connectionError: wsError } = useWebSocket("/ws/operations", isOnline);
 
   const clearBanners = useCallback(() => {
     setError("");
@@ -56,6 +58,12 @@ function AppShell() {
         setError(msg);
         clearBanners();
       }}
+      isOnline={isOnline}
+      isSimulatedOffline={isSimulatedOffline}
+      isBrowserOnline={isBrowserOnline}
+      toggleSimulatedOffline={toggleSimulatedOffline}
+      wsConnected={wsConnected}
+      wsError={wsError}
     />
   );
 }

@@ -8,12 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "cypress run"
   },
   "dependencies": {
     "firebase": "^12.15.0",
     "framer-motion": "^12.40.0",
     "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
     "lucide-react": "^1.18.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@vitejs/plugin-react": "^4.5.0",
+    "cypress": "^15.17.0",
     "vite": "^6.3.5",
     "vitest": "^3.2.6"
   }

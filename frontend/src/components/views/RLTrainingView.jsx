@@ -248,6 +248,40 @@ function injectStyles() {
 
 /* ── max-q highlight bar ── */
 .rl-qbar-max{filter:brightness(1.3);stroke:${C.accent};stroke-width:2px;}
+
+/* ── training activity feed ── */
+.rl-activity-wrap{
+  background:${C.panel};border:1px solid ${C.border};border-radius:12px;
+  padding:0;overflow:hidden;animation:rl-fadeIn .5s ease-out;
+}
+.rl-activity-header{
+  display:grid;grid-template-columns:80px 1fr 1fr 90px 1fr 1fr;
+  gap:8px;padding:10px 16px;
+  background:${C.bg};border-bottom:1px solid ${C.border};
+  font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:${C.muted};
+}
+.rl-activity-body{
+  max-height:320px;overflow-y:auto;
+}
+.rl-activity-body::-webkit-scrollbar{width:5px;}
+.rl-activity-body::-webkit-scrollbar-track{background:${C.bg};}
+.rl-activity-body::-webkit-scrollbar-thumb{background:${C.border};border-radius:3px;}
+.rl-activity-row{
+  display:grid;grid-template-columns:80px 1fr 1fr 90px 1fr 1fr;
+  gap:8px;padding:8px 16px;font-size:.78rem;font-family:ui-monospace,monospace;
+  border-bottom:1px solid ${C.border}22;
+  animation:rl-fadeIn .3s ease-out both;
+  transition:background .2s;
+}
+.rl-activity-row:hover{background:${C.bg}88;}
+.rl-activity-row:last-child{border-bottom:none;}
+.rl-activity-step{color:${C.accent};font-weight:600;}
+.rl-na{color:${C.muted};}
+@media(max-width:800px){
+  .rl-activity-header,.rl-activity-row{grid-template-columns:60px 1fr 70px 1fr;font-size:.72rem;}
+  .rl-activity-header span:nth-child(3),.rl-activity-header span:nth-child(6),
+  .rl-activity-row span:nth-child(3),.rl-activity-row span:nth-child(6){display:none;}
+}
 `;
   document.head.appendChild(style);
 }
@@ -383,6 +417,48 @@ export function RLTrainingView({ apiFetch }) {
       epsilon: h.epsilon,
     })),
   [history]);
+
+  const qValueStatsData = useMemo(() =>
+    history.filter(h => h && h.q_value_mean != null).map((h, i) => ({
+      step: h.train_step ?? h.step ?? i,
+      mean: h.q_value_mean,
+      std: h.q_value_std ?? 0,
+      min: (h.q_value_mean ?? 0) - (h.q_value_std ?? 0),
+      max: (h.q_value_mean ?? 0) + (h.q_value_std ?? 0),
+    })),
+  [history]);
+
+  const bufferGrowthData = useMemo(() =>
+    history.filter(h => h && h.buffer_size != null).map((h, i) => ({
+      step: h.train_step ?? h.step ?? i,
+      size: h.buffer_size,
+    })),
+  [history]);
+
+  const trainingActivity = useMemo(() =>
+    history.slice(-20).reverse().map(h => ({
+      step: h.train_step ?? 0,
+      loss: h.loss,
+      epsilon: h.epsilon,
+      timestamp: h.timestamp,
+      avgReward: h.avg_reward_last_50,
+      qMean: h.q_value_mean,
+    })),
+  [history]);
+
+  /* training throughput */
+  const trainingThroughput = useMemo(() => {
+    if (history.length < 2) return null;
+    const first = history[0];
+    const last = history[history.length - 1];
+    const steps = (last.train_step ?? 0) - (first.train_step ?? 0);
+    if (steps <= 0) return null;
+    const t1 = first.timestamp ? new Date(first.timestamp).getTime() : 0;
+    const t2 = last.timestamp ? new Date(last.timestamp).getTime() : 0;
+    const elapsed = (t2 - t1) / 1000;
+    if (elapsed <= 0) return null;
+    return (steps / elapsed).toFixed(2);
+  }, [history]);
 
   /* action distribution for pie */
   const pieData = useMemo(() => {
@@ -590,7 +666,140 @@ export function RLTrainingView({ apiFetch }) {
         </div>
       </div>
 
-      {/* ═══════════ SECTION 3 + 4: DISTRIBUTION + Q-VALUES ═══════════ */}
+      {/* ═══════════ SECTION 3: ADVANCED METRICS ═══════════ */}
+      {qValueStatsData.length > 0 || bufferGrowthData.length > 0 ? (
+        <>
+          <div className="rl-section-title">📊 Advanced Training Metrics</div>
+          <div className="rl-charts-grid">
+            {/* Q-Value Mean ± Std */}
+            {qValueStatsData.length > 0 && (
+              <div className="rl-chart-card">
+                <div className="rl-chart-title">
+                  <span className="dot" style={{ background: C.purple }} />
+                  Q-Value Confidence (mean ± std)
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={qValueStatsData}>
+                    <defs>
+                      <linearGradient id="qBandGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={C.purple} stopOpacity={0.2} />
+                        <stop offset="100%" stopColor={C.purple} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                    <XAxis dataKey="step" tick={{ fill: C.muted, fontSize: 11 }} axisLine={{ stroke: C.border }} tickLine={false} />
+                    <YAxis tick={{ fill: C.muted, fontSize: 11 }} axisLine={{ stroke: C.border }} tickLine={false} />
+                    <Tooltip content={<ChartTooltip formatter={(v) => v.toFixed(4)} />} />
+                    <Area type="monotone" dataKey="max" stroke="none" fill="url(#qBandGrad)" />
+                    <Area type="monotone" dataKey="min" stroke="none" fill="url(#qBandGrad)" />
+                    <Line type="monotone" dataKey="mean" stroke={C.purple} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="std" stroke={C.purple} strokeWidth={1} strokeDasharray="4 4" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Buffer Size Growth */}
+            {bufferGrowthData.length > 0 && (
+              <div className="rl-chart-card">
+                <div className="rl-chart-title">
+                  <span className="dot" style={{ background: C.blue }} />
+                  Replay Buffer Growth
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={bufferGrowthData}>
+                    <defs>
+                      <linearGradient id="bufGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={C.blue} stopOpacity={0.3} />
+                        <stop offset="100%" stopColor={C.blue} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                    <XAxis dataKey="step" tick={{ fill: C.muted, fontSize: 11 }} axisLine={{ stroke: C.border }} tickLine={false} />
+                    <YAxis tick={{ fill: C.muted, fontSize: 11 }} axisLine={{ stroke: C.border }} tickLine={false} />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Area type="monotone" dataKey="size" stroke={C.blue} strokeWidth={2} fill="url(#bufGrad)" dot={false} activeDot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Throughput Card */}
+            <div className="rl-chart-card">
+              <div className="rl-chart-title">
+                <span className="dot" style={{ background: C.accent }} />
+                Training Throughput
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: 220, gap: 8 }}>
+                <div style={{ fontSize: "2.2rem", fontWeight: 700, color: C.accent }}>
+                  {trainingThroughput ? `${trainingThroughput} step/s` : "—"}
+                </div>
+                <div style={{ fontSize: ".78rem", color: C.muted }}>
+                  Total records: <strong style={{ color: C.text }}>{history.length.toLocaleString()}</strong>
+                </div>
+                <div style={{ fontSize: ".78rem", color: C.muted }}>
+                  Buffer capacity: <strong style={{ color: C.text }}>{(stats?.buffer_capacity ?? 8000).toLocaleString()}</strong>
+                </div>
+                <div style={{ fontSize: ".78rem", color: C.muted }}>
+                  Buffer fill: <strong style={{ color: C.blue }}>{((stats?.buffer_size ?? 0) / (stats?.buffer_capacity ?? 8000) * 100).toFixed(1)}%</strong>
+                </div>
+                {qValueStatsData.length > 0 && (
+                  <div style={{ fontSize: ".78rem", color: C.muted }}>
+                    Q-value range: <strong style={{ color: C.purple }}>
+                      {qValueStatsData[qValueStatsData.length - 1]?.min.toFixed(2)} – {qValueStatsData[qValueStatsData.length - 1]?.max.toFixed(2)}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {/* ═══════════ SECTION 4: TRAINING ACTIVITY FEED ═══════════ */}
+      {trainingActivity.length > 0 && (
+        <>
+          <div className="rl-section-title">⚡ Live Training Activity</div>
+          <div className="rl-activity-wrap">
+            <div className="rl-activity-header">
+              <span>Step</span>
+              <span>Loss ↓</span>
+              <span>Q-Mean</span>
+              <span>ε</span>
+              <span>Avg Reward</span>
+              <span>Time</span>
+            </div>
+            <div className="rl-activity-body">
+              {trainingActivity.map((act, i) => {
+                const lossColor = act.loss != null ? (act.loss > 1 ? C.red : act.loss > 0.3 ? C.amber : C.green) : C.muted;
+                const rewardColor = act.avgReward != null ? (act.avgReward > 0 ? C.green : C.red) : C.muted;
+                return (
+                  <div key={i} className="rl-activity-row" style={{ animationDelay: `${i * 30}ms` }}>
+                    <span className="rl-activity-step">#{act.step}</span>
+                    <span className={act.loss != null ? "" : "rl-na"} style={{ color: lossColor }}>
+                      {act.loss != null ? act.loss.toFixed(6) : "—"}
+                    </span>
+                    <span className={act.qMean != null ? "" : "rl-na"}>
+                      {act.qMean != null ? act.qMean.toFixed(4) : "—"}
+                    </span>
+                    <span style={{ color: act.epsilon != null ? (act.epsilon > 0.5 ? C.amber : C.accent) : C.muted }}>
+                      {act.epsilon != null ? act.epsilon.toFixed(4) : "—"}
+                    </span>
+                    <span style={{ color: rewardColor }}>
+                      {act.avgReward != null ? act.avgReward.toFixed(4) : "—"}
+                    </span>
+                    <span className="rl-na">
+                      {act.timestamp ? new Date(act.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ═══════════ SECTION 5 + 6: DISTRIBUTION + Q-VALUES ═══════════ */}
       <div className="rl-insights-grid">
         {/* Action Distribution */}
         <div className="rl-dist-card">
@@ -701,7 +910,7 @@ export function RLTrainingView({ apiFetch }) {
         </div>
       </div>
 
-      {/* ═══════════ SECTION 5: RECENT EPISODES ═══════════ */}
+      {/* ═══════════ SECTION 7: RECENT EPISODES ═══════════ */}
       <div className="rl-section-title">📋 Recent Episodes</div>
       <div className="rl-episodes-wrap">
         {episodes.length > 0 ? (
@@ -751,7 +960,7 @@ export function RLTrainingView({ apiFetch }) {
         )}
       </div>
 
-      {/* ═══════════ SECTION 6: TRAINING CONTROLS ═══════════ */}
+      {/* ═══════════ SECTION 8: TRAINING CONTROLS ═══════════ */}
       <div className="rl-section-title">🎮 Training Controls</div>
       <div className="rl-controls">
         <button className="rl-btn rl-btn-primary" onClick={runBatchTraining} disabled={training}>

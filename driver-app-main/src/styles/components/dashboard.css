@@ -88,6 +88,12 @@
   border-color: var(--danger);
 }
 
+.banner.warning {
+  background: var(--warning-bg);
+  color: #92400e;
+  border-color: var(--warning);
+}
+
 /* ===== View Stack ===== */
 .view-stack {
   display: grid;

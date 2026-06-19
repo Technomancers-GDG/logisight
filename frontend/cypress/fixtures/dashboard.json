@@ -1,0 +1,22 @@
+{
+  "status": "idle",
+  "simulation_time": "2026-06-19 08:00:00",
+  "speed_multiplier": 1,
+  "metrics": {
+    "on_time_delivery_pct": 94.2,
+    "co2_saved_kg": 1250.5,
+    "stockouts_prevented": 18,
+    "costs_saved": 245000,
+    "operational_costs": 890000,
+    "critical_deliveries_saved": 42,
+    "beneficiary_locations": 156,
+    "wastage_prevented_kg": 3200,
+    "total_trips": 890,
+    "completed_trips": 845,
+    "on_time_trips": 796
+  },
+  "active_disruptions": [],
+  "rl_decisions_count": 450,
+  "rule_decisions_count": 120,
+  "rl_override_successes": 415
+}

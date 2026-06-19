@@ -23,6 +23,12 @@ export function DashboardPage({
   error,
   setMessage,
   setError,
+  isOnline,
+  isSimulatedOffline,
+  isBrowserOnline,
+  toggleSimulatedOffline,
+  wsConnected,
+  wsError,
 }) {
   const [decisionLoading, setDecisionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("route");
@@ -102,12 +108,35 @@ export function DashboardPage({
         </div>
         <div className="app-header-right">
           <span className="vehicle-id">{vehicle.identifier}</span>
+          <button
+            type="button"
+            className={`conn-toggle ${!isOnline ? "is-offline" : ""}`}
+            onClick={toggleSimulatedOffline}
+            title={isOnline ? "Simulate offline mode" : "Restore connectivity"}
+          >
+            <span className={`conn-dot ${wsConnected ? "conn-online" : "conn-offline"}`} />
+            <span className="conn-label">
+              {isSimulatedOffline ? "SIM OFFLINE" : wsConnected ? "LIVE" : "OFFLINE"}
+            </span>
+          </button>
           <button type="button" className="secondary small" onClick={onLogout}>
             Sign Out
           </button>
         </div>
       </header>
 
+      {!isOnline && (
+        <div className={`banner ${isSimulatedOffline ? "warning" : "error"}`}>
+          {isSimulatedOffline
+            ? "🔌 Simulated offline — all connections paused. Tap the connection dot to restore."
+            : "📡 No internet connection — data may be stale."}
+        </div>
+      )}
+      {isOnline && wsError && (
+        <div className="banner warning">
+          ⚠ {wsError}
+        </div>
+      )}
       {message && <div className="banner success">{message}</div>}
       {error && <div className="banner error">{error}</div>}
 

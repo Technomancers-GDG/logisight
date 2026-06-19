@@ -1,0 +1,63 @@
+.conn-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.conn-toggle:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.conn-toggle.is-offline {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.conn-online {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.conn-offline {
+  background: var(--danger);
+  animation: conn-pulse 1.5s ease-in-out infinite;
+}
+
+.conn-label {
+  font-size: 0.65rem;
+}
+
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@media (max-width: 480px) {
+  .conn-label {
+    display: none;
+  }
+  .conn-toggle {
+    padding: 4px 8px;
+  }
+}

@@ -103,7 +103,7 @@ describe("Driver App Utilities", () => {
   });
 
   describe("Driver State Machine", () => {
-    const validTransitions: Record<string, string[]> = {
+    const validTransitions = {
       idle: ["en_route", "loading"],
       en_route: ["unloading", "disrupted"],
       loading: ["en_route", "disrupted"],

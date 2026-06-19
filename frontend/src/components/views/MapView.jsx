@@ -4,6 +4,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import L from "leaflet";
 import { Panel, Select } from "../common/UiPrimitives";
+import { HeatmapLayer } from "../common/HeatmapLayer";
 
 const DEFAULT_CENTER = [22.5937, 78.9629];
 const DEFAULT_ZOOM = 5;
@@ -246,6 +247,7 @@ export function MapView({
   const [showRoutePaths, setShowRoutePaths] = useState(true);
   const [showRiskHeatmap, setShowRiskHeatmap] = useState(true);
   const [showAllRoutes, setShowAllRoutes] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   const objectiveLookup = useMemo(() => Object.fromEntries(objectives.map((o) => [o.id, o])), [objectives]);
 
@@ -383,6 +385,26 @@ export function MapView({
 
   const disruptionEvents = useMemo(() => activeEvents.filter((e) => Number(e.impact_score ?? 0) >= 0.2).sort((a, b) => Number(b.impact_score ?? 0) - Number(a.impact_score ?? 0)).slice(0, 8), [activeEvents]);
 
+  const heatmapPoints = useMemo(() => {
+    const pts = [];
+    const seen = new Set();
+    const addPoint = (lat, lon, weight, label) => {
+      const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      pts.push([lat, lon, Math.min(weight, 1.0)]);
+    };
+    activeEvents.forEach((event) => {
+      const facility = facilities.find((f) => String(f.city).trim().toLowerCase() === String(event.city).trim().toLowerCase() && hasCoordinates(f) && isInIndiaBounds(Number(f.latitude), Number(f.longitude)));
+      if (facility) addPoint(Number(facility.latitude), Number(facility.longitude), Number(event.impact_score ?? 0.5), event.city);
+    });
+    riskForecast.forEach((rf) => {
+      const facility = facilities.find((f) => String(f.city).trim().toLowerCase() === String(rf.city).trim().toLowerCase() && hasCoordinates(f) && isInIndiaBounds(Number(f.latitude), Number(f.longitude)));
+      if (facility) addPoint(Number(facility.latitude), Number(facility.longitude), Number(rf.risk ?? 0.3), rf.city);
+    });
+    return pts;
+  }, [activeEvents, riskForecast, facilities]);
+
   const mapStats = useMemo(() => {
     const reroutesPending = recommendations.filter((r) => r.status === "suggested" && String(r.action || "").startsWith("reroute")).length;
     const routeSpanKm = liveRoutes.reduce((sum, route) => sum + pathDistanceKm(route.routePoints), 0);
@@ -406,8 +428,9 @@ export function MapView({
           <div className="control-row checkbox-row">
             <label className="checkbox-label"><input type="checkbox" checked={showDisruptions} onChange={(e) => setShowDisruptions(e.target.checked)} /><span>Show Disruption Zones</span></label>
             <label className="checkbox-label"><input type="checkbox" checked={showRoutePaths} onChange={(e) => setShowRoutePaths(e.target.checked)} /><span>Show Selected Route Path</span></label>
-            <label className="checkbox-label"><input type="checkbox" checked={showRiskHeatmap} onChange={(e) => setShowRiskHeatmap(e.target.checked)} /><span>Show Risk Heatmap</span></label>
+            <label className="checkbox-label"><input type="checkbox" checked={showRiskHeatmap} onChange={(e) => setShowRiskHeatmap(e.target.checked)} /><span>Show Risk Circles</span></label>
             <label className="checkbox-label"><input type="checkbox" checked={showAllRoutes} onChange={(e) => setShowAllRoutes(e.target.checked)} /><span>Show All Routes</span></label>
+            <label className="checkbox-label"><input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} /><span>Smooth Heatmap 🔥</span></label>
           </div>
           {onScaleFleet ? (
             <div className="scale-controls">
@@ -427,6 +450,7 @@ export function MapView({
             <span><i className="risk-dot medium" />Medium risk</span>
             <span><i className="risk-dot high" />High risk</span>
             <span><i className="dash-sample" />Rerouted segment</span>
+            {showHeatmap && <span className="heatmap-legend-label">🔥 Heatmap: green → yellow → red (intensity)</span>}
           </div>
         </div>
 
@@ -435,6 +459,7 @@ export function MapView({
             <MapResizeObserver />
             <MapClickHandler onMapClick={() => { setFilterVehicleId(""); setHighlightedVehicleId(""); }} />
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {showHeatmap && <HeatmapLayer points={heatmapPoints} options={{ radius: 40, blur: 25, minOpacity: 0.3 }} />}
             {selectedRoutePath ? (
               <>
                 <Polyline key={`shadow-${selectedVehicleId}`} positions={selectedRoutePath} color="#111827" weight={8} opacity={0.25} />

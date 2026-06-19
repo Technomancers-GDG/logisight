@@ -7,6 +7,7 @@
 @import "./styles/components/login.css";
 @import "./styles/components/dashboard.css";
 @import "./styles/components/chat.css";
+@import "./styles/components/connectivity.css";
 
 /* ===== Responsive Tab Visibility ===== */
 @media (max-width: 768px) {
