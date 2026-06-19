@@ -39,7 +39,7 @@ services:
       - key: USE_NSGA2_OPTIMIZER
         value: "true"
       - key: BLOCKCHAIN_LEDGER_PATH
-        value: data/blockchain_ledger.json
+        value: data/audit_ledger.json
       - key: GCP_PROJECT_ID
         value: ""
       - key: GCP_REGION

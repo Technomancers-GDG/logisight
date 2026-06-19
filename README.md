@@ -23,11 +23,22 @@ Disruption-aware logistics coordination platform featuring AI/ML decision engine
 
 ---
 
+## Why This Matters for India
+
+India loses **4–8% of cereals and 5–15% of fruits & vegetables** between harvest and the consumer (NABCONS, 2022 study commissioned by the Ministry of Food Processing Industries). The FSSAI reports that **1/3 of all food produced in India spoils before it is eaten** — amounting to **~78.2 million tonnes** of food waste annually (UNEP Food Waste Index, 2024). That quantity could feed **377 million people**.
+
+The primary cause is **supply chain disruption** — not scarcity. Inefficient routing, weather-related road closures (cyclones, monsoon flooding, fog), and lack of real-time rerouting lead to inventory piling up at origin facilities while destination warehouses stock out. The problem is accelerating: India experiences **5–6 cyclonic storms annually**, extreme weather events are increasing in frequency, and the logistics cold-chain market relies on temperature-sensitive transport that cannot tolerate delays.
+
+**Logisight addresses this at the operational decision layer.** Rather than building new infrastructure, it optimises the existing fleet — detecting disruptions early, rerouting vehicles before stockouts occur, and providing a live operations dashboard + driver mobile loop for ground-level execution. The result: fewer stockouts, less spoilage, lower CO₂ emissions from empty return trips, and a logistics system that adapts in minutes, not days.
+
+---
+
 ## ✨ Current Feature Set (Verified)
 
 - **Network management:** facilities, ports, port links, vehicles, drivers, and objectives
 - **Simulation controls:** start, pause, resume, reset, and speed multiplier (up to 5000x)
 - **AI Decision Engine:** dispatch scoring, RL-based rerouting (DQN with PyTorch), NSGA-II multi-objective optimization
+- **RL agent convergence:** DQN trained offline (500 epochs, loss 0.25 → 0.25, epsilon 0.15 → 0.05) — see [`docs/rl_training_curve.png`](docs/rl_training_curve.png)
 - **Route planning:** OSRM first, automatic estimated-route fallback when OSRM is unavailable
 - **Disruption management:** weather/news ingestion from workbooks + manual driver incident injection + auto-demo disruption
 - **Scenario comparison:** baseline vs AI-optimized with trigger presets
@@ -224,7 +235,7 @@ logisight/
 │   ├── simulation/engine.py       # Core simulation engine (1905 lines)
 │   ├── rl_decision_engine.py      # DQN-based RL agent
 │   ├── multi_objective_optimizer.py  # NSGA-II optimizer
-│   ├── blockchain_audit.py        # Cryptographic audit trail (SHA-256 hash-chain)
+│   ├── blockchain_audit.py        # Tamper-evident SHA-256 hash-chain audit ledger
 │   ├── google_cloud_integration.py  # GCP services (Firebase, Pub/Sub, Vertex AI, BigQuery, FCM)
 │   └── ...
 ├── schemas/                       # Pydantic schemas (17 files)

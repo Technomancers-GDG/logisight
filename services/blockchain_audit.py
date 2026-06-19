@@ -56,7 +56,7 @@ class BlockchainLedger:
     """
 
     def __init__(self, chain_path: Path | None = None) -> None:
-        self.chain_path = chain_path or Path(settings.blockchain_ledger_path)
+        self.chain_path = chain_path or Path(settings.audit_ledger_path)
         self.chain: list[AuditBlock] = []
         self._load_chain()
         if not self.chain:

@@ -18,7 +18,10 @@ from models import (
     ScenarioPreset,
     Vehicle,
     DriverProfile,
+    WeatherEvent,
 )
+from services.event_ingestion import compute_weather_risk
+from services.live_weather import fetch_city_weather, fetch_all_cities
 from schemas import (
     DashboardSnapshot,
     MetricsSummary,
@@ -397,3 +400,67 @@ def compare_scenario(scenario_key: str, session: Session = Depends(get_session))
 @simulation_router.get("/api/dashboard", response_model=DashboardSnapshot)
 def dashboard(session: Session = Depends(get_session)) -> DashboardSnapshot:
     return simulation_engine.dashboard_snapshot(session)
+
+
+@simulation_router.post("/api/weather/live")
+async def fetch_and_apply_live_weather(session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Fetch live weather from Open-Meteo for all tracked cities and upsert into the DB."""
+    readings = await fetch_all_cities()
+    if not readings:
+        return {"status": "no_data", "imported": 0, "cities": []}
+
+    today = date.today()
+    imported = 0
+    for city, reading in readings.items():
+        existing = session.scalar(
+            select(WeatherEvent).where(
+                WeatherEvent.simulation_date == today,
+                WeatherEvent.city == city,
+            )
+        )
+        if existing is not None:
+            existing.max_temp_c = reading.max_temp_c
+            existing.min_temp_c = reading.min_temp_c
+            existing.precipitation_mm = reading.precipitation_mm
+            existing.closure_risk = reading.closure_risk
+            existing.eta_multiplier = reading.eta_multiplier
+        else:
+            session.add(WeatherEvent(
+                original_date=today,
+                simulation_date=today,
+                city=city,
+                max_temp_c=reading.max_temp_c,
+                min_temp_c=reading.min_temp_c,
+                precipitation_mm=reading.precipitation_mm,
+                closure_risk=reading.closure_risk,
+                eta_multiplier=reading.eta_multiplier,
+            ))
+        imported += 1
+    session.commit()
+
+    # Refresh the engine's weather map if it's loaded
+    if simulation_engine.facilities:
+        simulation_engine._load_event_maps(session)
+
+    return {
+        "status": "ok",
+        "imported": imported,
+        "cities": list(readings.keys()),
+    }
+
+
+@simulation_router.get("/api/weather/live/{city}")
+async def fetch_single_city_weather(city: str) -> dict[str, Any]:
+    """Fetch live weather for one city (read-only, does not write to DB)."""
+    reading = await fetch_city_weather(city)
+    if reading is None:
+        return {"status": "not_found", "city": city}
+    return {
+        "status": "ok",
+        "city": reading.city,
+        "max_temp_c": reading.max_temp_c,
+        "min_temp_c": reading.min_temp_c,
+        "precipitation_mm": reading.precipitation_mm,
+        "closure_risk": reading.closure_risk,
+        "eta_multiplier": reading.eta_multiplier,
+    }

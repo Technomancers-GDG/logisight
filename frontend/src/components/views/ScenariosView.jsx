@@ -48,19 +48,94 @@ function ParetoChart({ data }) {
   );
 }
 
-export function ScenariosView({ scenarios = [], apiFetch }) {
+function ComparisonTable({ comparison }) {
+  if (!comparison) return null;
+  const { baseline, ai, improvement } = comparison;
+
+  const rows = [
+    { label: "On-Time Delivery", key: "on_time_delivery_pct", unit: "%", green: "higher" },
+    { label: "Avg Delay", key: "average_delay_minutes", unit: "min", green: "lower" },
+    { label: "Avg Cost per Trip", key: "average_cost_usd", unit: "$", green: "lower" },
+    { label: "Overflow Events", key: "overflow_events", unit: "", green: "lower" },
+    { label: "Reroutes Applied", key: "reroute_count", unit: "", green: "higher" },
+    { label: "Idle Minutes Saved", key: "idle_minutes_prevented", unit: "min", green: "higher" },
+    { label: "CO₂ Saved", key: "co2_saved_kg", unit: "kg", green: "higher" },
+    { label: "Stockouts Prevented", key: "stockouts_prevented", unit: "", green: "higher" },
+  ];
+
+  function delta(baselineVal, aiVal, key) {
+    const diff = aiVal - baselineVal;
+    const pct = baselineVal !== 0 ? ((diff / Math.abs(baselineVal)) * 100).toFixed(1) : "-";
+    const isGood = key === "average_delay_minutes" || key === "overflow_events" || key === "average_cost_usd"
+      ? diff < 0 : diff > 0;
+    return { diff: (diff > 0 ? "+" : "") + diff.toFixed(1), pct, isGood };
+  }
+
+  return (
+    <div style={{ marginTop: "1rem", background: "#0f172a", borderRadius: "8px", padding: "1rem" }}>
+      <h4 style={{ color: "#f8fafc", margin: "0 0 0.75rem 0", fontSize: "0.95rem" }}>
+        Baseline vs AI-Optimized
+      </h4>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+        <thead>
+          <tr style={{ borderBottom: "1px solid #334155" }}>
+            <th style={{ textAlign: "left", padding: "0.5rem", color: "#94a3b8" }}>Metric</th>
+            <th style={{ textAlign: "right", padding: "0.5rem", color: "#f87171" }}>Baseline</th>
+            <th style={{ textAlign: "right", padding: "0.5rem", color: "#34d399" }}>AI Optimized</th>
+            <th style={{ textAlign: "right", padding: "0.5rem", color: "#94a3b8" }}>Delta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const bv = baseline[r.key] ?? 0;
+            const av = ai[r.key] ?? 0;
+            const d = delta(bv, av, r.key);
+            return (
+              <tr key={r.key} style={{ borderBottom: "1px solid #1e293b" }}>
+                <td style={{ padding: "0.4rem 0.5rem", color: "#f8fafc" }}>{r.label}</td>
+                <td style={{ padding: "0.4rem 0.5rem", textAlign: "right", color: "#fca5a5" }}>
+                  {bv.toFixed(1)}{r.unit && <span style={{ color: "#64748b", marginLeft: "2px" }}>{r.unit}</span>}
+                </td>
+                <td style={{ padding: "0.4rem 0.5rem", textAlign: "right", color: "#6ee7b7" }}>
+                  {av.toFixed(1)}{r.unit && <span style={{ color: "#64748b", marginLeft: "2px" }}>{r.unit}</span>}
+                </td>
+                <td style={{
+                  padding: "0.4rem 0.5rem", textAlign: "right",
+                  color: d.isGood ? "#34d399" : "#f87171", fontWeight: 600,
+                }}>
+                  {d.diff}{d.pct !== "-" && <span style={{ color: "#64748b", fontWeight: 400, marginLeft: "2px" }}>({d.pct}%)</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {improvement?.on_time_delta_pct !== undefined && (
+        <div style={{ marginTop: "0.75rem", padding: "0.5rem", background: "#1e293b", borderRadius: "6px", fontSize: "0.8rem", color: "#94a3b8", textAlign: "center" }}>
+          Summary: {improvement.on_time_delta_pct > 0 ? "+" : ""}{improvement.on_time_delta_pct}% on-time | {improvement.delay_reduction_minutes > 0 ? "-" : ""}{improvement.delay_reduction_minutes} min avg delay |
+          Cost delta: {baseline.average_cost_usd - ai.average_cost_usd > 0 ? "-$" + (baseline.average_cost_usd - ai.average_cost_usd).toFixed(1) : "+$" + (ai.average_cost_usd - baseline.average_cost_usd).toFixed(1)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ScenariosView({ scenarios = [], apiFetch, scenarioComparison, setScenarioComparison }) {
   const [selected, setSelected] = useState(null);
   const [running, setRunning] = useState(false);
   const [severitySlider, setSeveritySlider] = useState(5);
 
-  async function runScenario(id) {
+  async function runScenario(id, scenarioKey) {
     setRunning(true);
     try {
-      const data = await apiFetch("/api/scenarios/" + id + "/trigger", {
+      await apiFetch("/api/scenarios/" + id + "/trigger", {
         method: "POST",
         body: JSON.stringify({ severity_override: severitySlider / 10 }),
       });
-      setSelected(data);
+      if (scenarioKey) {
+        const comp = await apiFetch("/api/scenarios/" + scenarioKey + "/compare");
+        if (setScenarioComparison) setScenarioComparison(comp);
+      }
     } catch {}
     setRunning(false);
   }
@@ -129,7 +204,7 @@ export function ScenariosView({ scenarios = [], apiFetch }) {
               )}
 
               <button
-                onClick={() => runScenario(selected.id)}
+                onClick={() => runScenario(selected.id, selected.scenario_key)}
                 disabled={running}
                 style={{
                   padding: "0.5rem 1.5rem",
@@ -144,12 +219,7 @@ export function ScenariosView({ scenarios = [], apiFetch }) {
                 {running ? "Running..." : "Run Scenario"}
               </button>
 
-              {selected.scenario_metrics && (
-                <div style={{ marginTop: "1rem", padding: "1rem", background: "#0f172a", borderRadius: "8px" }}>
-                  <div style={{ color: "#6ee7b7", fontSize: "0.85rem" }}>Scenario applied: {selected.scenario_metrics.note}</div>
-                  <div style={{ color: "#94a3b8", fontSize: "0.8rem", marginTop: "0.25rem" }}>City: {selected.scenario_metrics.city} | Severity: {selected.scenario_metrics.severity}</div>
-                </div>
-              )}
+              {scenarioComparison && <ComparisonTable comparison={scenarioComparison} />}
             </div>
           )}
         </Panel>

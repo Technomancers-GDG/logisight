@@ -38,7 +38,7 @@ class Settings:
     use_rl_engine: bool
     use_nsga2_optimizer: bool
     # Cryptographic Audit (SHA-256 hash-chain ledger)
-    blockchain_ledger_path: str
+    audit_ledger_path: str
     # Google Cloud
     gcp_project_id: str
     gcp_region: str
@@ -121,7 +121,7 @@ def load_settings() -> Settings:
         use_rl_engine=_get_bool_env("USE_RL_ENGINE", "true"),
         use_nsga2_optimizer=_get_bool_env("USE_NSGA2_OPTIMIZER", "true"),
         # Cryptographic Audit trail
-        blockchain_ledger_path=_get_env("BLOCKCHAIN_LEDGER_PATH", "data/blockchain_ledger.json"),
+        audit_ledger_path=_get_env("AUDIT_LEDGER_PATH", "data/audit_ledger.json"),
         # Google Cloud
         gcp_project_id=_get_env("GCP_PROJECT_ID", ""),
         gcp_region=_get_env("GCP_REGION", "asia-south1"),

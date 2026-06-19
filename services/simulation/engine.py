@@ -1595,6 +1595,7 @@ class SimulationEngine:
         baseline_metrics = {
             "on_time_delivery_pct": round((baseline_on_time / total) * 100, 2),
             "average_delay_minutes": round(float(np.mean([max(0, t - obj.sla_minutes) for t, obj in zip(baseline_times, active_objectives)])), 2) if baseline_times else 0.0,
+            "average_cost_usd": round(float(np.mean(baseline_costs)), 2) if baseline_costs else 0.0,
             "overflow_events": baseline_overflow,
             "reroute_count": 0,
             "idle_minutes_prevented": 0.0,
@@ -1604,6 +1605,7 @@ class SimulationEngine:
         ai_metrics = {
             "on_time_delivery_pct": round((ai_on_time / total) * 100, 2),
             "average_delay_minutes": round(float(np.mean([max(0, t - obj.sla_minutes) for t, obj in zip(ai_times, active_objectives)])), 2) if ai_times else 0.0,
+            "average_cost_usd": round(float(np.mean(ai_costs)), 2) if ai_costs else 0.0,
             "overflow_events": ai_overflow,
             "reroute_count": ai_reroutes,
             "idle_minutes_prevented": round(ai_idle_saved, 2),

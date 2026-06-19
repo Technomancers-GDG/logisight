@@ -103,6 +103,7 @@ class ScenarioPresetRead(ORMModel):
 class ScenarioComparisonMetrics(BaseModel):
     on_time_delivery_pct: float
     average_delay_minutes: float
+    average_cost_usd: float
     overflow_events: int
     reroute_count: int
     idle_minutes_prevented: float
