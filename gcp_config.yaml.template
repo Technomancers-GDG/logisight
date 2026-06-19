@@ -1,0 +1,72 @@
+# Google Cloud Platform Configuration Template
+# Copy to gcp_config.yaml and fill in your actual values.
+# Used by: services/google_cloud_integration.py
+
+project_id: logisight-prod
+region: asia-south1
+zone: asia-south1-a
+
+firebase:
+  enabled: true
+  database_url: https://logisight-prod-default-rtdb.asia-southeast1.firebasedatabase.app
+  storage_bucket: logisight-prod.firebasestorage.app
+
+pubsub:
+  enabled: true
+  topics:
+    - driver_state_updates
+    - disruption_events
+    - simulation_metrics
+  subscriptions:
+    - disruption_alert_sub
+
+vertex_ai:
+  enabled: true
+  endpoint_id: logisight-rl-predictor
+  model_name: logisight_reroute_v1
+  location: asia-south1
+
+bigquery:
+  enabled: true
+  dataset: supply_chain
+  tables:
+    - simulation_events
+    - driver_metrics
+    - delivery_performance
+    - disruption_impact
+
+fcm:
+  enabled: true
+  android_channel_id: logisight_alerts
+
+cloud_run:
+  service_name: logisight-api
+  min_instances: 1
+  max_instances: 10
+  cpu: 2
+  memory_mb: 1024
+  concurrency: 80
+  timeout_seconds: 300
+  vpc_connector: logisight-vpc-connector
+  region: asia-south1
+
+cloud_sql:
+  instance: logisight-prod:asia-south1:logisight-db
+  database: supply_chain
+  user: app_user
+  connection_name: logisight-prod:asia-south1:logisight-db
+  proxy_port: 5432
+
+cloud_storage:
+  bucket: logisight-uploads
+  region: ASIA_SOUTH1
+
+cloud_cdn:
+  enabled: true
+  domain: cdn.logisight.app
+  origin: logisight-api-bkvdh4lhda-uc.a.run.app
+
+logging:
+  enabled: true
+  default_log_level: INFO
+  export_to_bigquery: false

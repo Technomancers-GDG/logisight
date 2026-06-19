@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "logisight"
+version = "0.1.0"
+description = "Resilient Essential Goods Coordinator — disruption-aware logistics simulation"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "pandas>=3.0",
+    "scikit-learn>=1.8",
+    "torch",
+    "google-genai",
+    "python-dotenv>=1.1",
+    "slowapi>=0.1",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "S"]
+ignore = ["S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-width = 4
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    ".venv/*",
+    "*/site-packages/*",
+    "static/*",
+    "images/*",
+    "public/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == \"__main__\":",
+    "raise NotImplementedError",
+    "raise AssertionError",
+    "pass",
+]
+fail_under = 20

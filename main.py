@@ -32,6 +32,7 @@ from database import SessionLocal, init_db
 from seed_data import seed_demo_data
 
 from app_state import simulation_engine
+from services.rl_decision_engine import get_rl_engine
 from services.simulation_manager import simulation_manager
 from routes import crud_router, simulation_router, driver_router, ai_router, logistics_router, rl_router, comparison_router, integration_router, management_router, client_auth_router, client_upload_router, client_dashboard_router
 
@@ -46,17 +47,29 @@ async def lifespan(app: FastAPI):
             seed_demo_data(session)
         # Restore all previously running client engines
         await simulation_manager.start_all(session)
+
+    # Seed RL engine with pre-trained weights at startup
+    get_rl_engine()
+
     if settings.demo_mode:
         await simulation_engine.start(speed_multiplier=settings.simulation_speed)
         if demo_disruption_task is None or demo_disruption_task.done():
             demo_disruption_task = asyncio.create_task(_trigger_demo_disruption())
+        _rl_background_train = asyncio.create_task(_run_rl_background_training())
+        _periodic_disruption = asyncio.create_task(_run_periodic_disruption_scheduler())
+    else:
+        _rl_background_train = None
+        _periodic_disruption = None
     yield
-    if demo_disruption_task is not None and not demo_disruption_task.done():
-        demo_disruption_task.cancel()
-        try:
-            await demo_disruption_task
-        except asyncio.CancelledError:
-            pass
+    for task_name, task in [("demo_disruption", demo_disruption_task),
+                            ("rl_background_train", _rl_background_train),
+                            ("periodic_disruption", _periodic_disruption)]:
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
     demo_disruption_task = None
     # Graceful shutdown: save all engines
     with SessionLocal() as session:
@@ -195,8 +208,80 @@ async def _trigger_demo_disruption() -> None:
         logger.error("Demo disruption task failed: %s", exc)
 
 
+# --- Background RL training ---
+async def _run_rl_background_training() -> None:
+    """Periodically run mini-batch RL training steps during simulation."""
+    try:
+        rl = get_rl_engine()
+        while True:
+            await asyncio.sleep(3.0)
+            if simulation_engine.status != "running":
+                continue
+            for _ in range(3):
+                result = rl.train_step_update()
+                if result is None:
+                    break
+            if rl.train_step > 0 and rl.train_step % 20 == 0:
+                rl.save_weights()
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.error("RL background training failed: %s", exc)
 
 
+# --- Periodic disruption scheduler ---
+async def _run_periodic_disruption_scheduler() -> None:
+    """Inject random simulated disruptions every 10-20 simulated days
+    to give the illusion of a live API feed."""
+    import random as _random
+    from models import WeatherEvent, Facility
+
+    CITIES = ["Chennai", "Mumbai", "Bengaluru", "Delhi", "Kolkata", "Hyderabad", "Pune", "Ahmedabad"]
+    TYPES = ["heavy_rainfall", "flood", "cyclone", "heatwave", "fog", "landslide", "thunderstorm"]
+
+    try:
+        while True:
+            sim_days_interval = _random.randint(10, 20)
+            real_seconds = sim_days_interval / max(settings.simulation_speed, 1)
+            await asyncio.sleep(real_seconds)
+
+            if simulation_engine.status != "running":
+                continue
+
+            city = _random.choice(CITIES)
+            event_type = _random.choice(TYPES)
+            severity = round(_random.uniform(0.3, 0.85), 2)
+            event_date = simulation_engine.simulation_time.date()
+
+            with SessionLocal() as session:
+                existing = session.query(WeatherEvent).filter(
+                    WeatherEvent.city == city,
+                    WeatherEvent.event_type == event_type,
+                    WeatherEvent.original_date == event_date,
+                ).first()
+                if existing:
+                    continue
+
+                event = WeatherEvent(
+                    original_date=event_date,
+                    simulation_date=event_date,
+                    city=city,
+                    event_type=event_type,
+                    severity=severity,
+                    description=f"Scheduled disruption: {event_type} in {city} (severity={severity})",
+                )
+                session.add(event)
+                session.commit()
+                session.refresh(event)
+                simulation_engine.update_weather_event_map(event)
+                logger.info(
+                    "Periodic disruption injected: %s in %s (severity=%.2f)",
+                    event_type, city, severity,
+                )
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.error("Periodic disruption scheduler failed: %s", exc)
 # --- Diagnostic ---
 @app.get("/api/diag/engines")
 async def diag_engines():

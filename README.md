@@ -1,46 +1,154 @@
 # Resilient Essential Goods Coordinator
 
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
+![React](https://img.shields.io/badge/React-18-61DAFB)
+![License](https://img.shields.io/badge/license-MIT-green)
+[![CI](https://github.com/Technomancers-GDG/logisight/actions/workflows/ci.yml/badge.svg)](https://github.com/Technomancers-GDG/logisight/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Technomancers-GDG/logisight/branch/main/graph/badge.svg)](https://codecov.io/gh/Technomancers-GDG/logisight)
+![Google Cloud Run](https://img.shields.io/badge/GCP-Cloud_Run-4285F4)
+![Deployed](https://img.shields.io/badge/status-deployed-success)
+
 FastAPI + React application for disruption-aware essential-goods logistics simulation across India.
 
-This repository currently includes:
-- A FastAPI backend with simulation, routing, event ingestion, and impact metrics.
-- A Vite + React frontend control center with map-driven operations and live updates.
-- SQLite persistence by default, with configurable database and routing providers.
+**Live demo:** [https://logisight.app](https://logisight.app) | **API docs:** [https://logisight.app/docs](https://logisight.app/docs)
 
-## Current Feature Set (Verified)
+---
 
-- Network management: facilities, ports, port links, vehicles, drivers, and objectives.
-- Simulation controls: start, pause, resume, reset, and speed multiplier.
-- Decision engine actions: continue, reroute to warehouse or port, wait, and defer dispatch.
-- Route planning with OSRM first, automatic estimated-route fallback when OSRM is unavailable.
-- Disruption ingestion from weather/news workbooks plus manual driver incident injection.
-- Scenario presets with trigger and baseline-vs-AI comparison.
-- Driver mobile loop: pending instructions, accept or ignore decisions, and incident reporting.
-- SDG-style operations metrics including stockouts prevented and critical deliveries saved.
-- Real-time operations stream over WebSocket at `/ws/operations`.
+## 🏆 Hackathon Submission — Round 2
 
-## Frontend Views Available Now
+Disruption-aware logistics coordination platform featuring AI/ML decision engines, real-time simulation, driver mobile loop, and Google Cloud integration.
 
-The current App shell exposes 8 tabs:
-- Map View
-- Network
-- Objectives
-- Live Ops
-- Scenarios
-- Driver Mobile
-- Events
-- Impact
+**One-liner pitch:** *"A disruption-aware logistics brain for India. We simulate real supply chains, ingest weather/news data, and use an AI decision engine to reroute vehicles before stockouts happen — all visible on a live map with a driver mobile loop."*
 
-## Architecture
+---
 
-- Backend: FastAPI + SQLAlchemy in [main.py](main.py) and [services/](services/).
-- Database: SQLite by default (`supply_chain.db`) via [database.py](database.py).
-- Frontend: React + Vite in [frontend/](frontend/), with Leaflet map rendering.
-- Static serving: when [frontend/dist](frontend/dist) exists, FastAPI serves it at `/`.
+## ✨ Current Feature Set (Verified)
 
-## Quick Start
+- **Network management:** facilities, ports, port links, vehicles, drivers, and objectives
+- **Simulation controls:** start, pause, resume, reset, and speed multiplier (up to 5000x)
+- **AI Decision Engine:** dispatch scoring, RL-based rerouting (DQN with PyTorch), NSGA-II multi-objective optimization
+- **Route planning:** OSRM first, automatic estimated-route fallback when OSRM is unavailable
+- **Disruption management:** weather/news ingestion from workbooks + manual driver incident injection + auto-demo disruption
+- **Scenario comparison:** baseline vs AI-optimized with trigger presets
+- **Driver mobile loop:** pending instructions, accept/ignore decisions, incident reporting, AI chat assistant
+- **SDG-style metrics:** stockouts prevented, critical deliveries saved, CO2 reduction
+- **Real-time WebSocket stream** at `/ws/operations`
+- **Multi-tenant architecture:** isolated simulation engines per client
+- **Cryptographic audit trail:** tamper-evident SHA-256 hash-chain ledger
+- **Bilingual UI:** English + Hindi (i18n)
+- **PWA support** with offline caching
 
-### 1. Backend setup (PowerShell)
+---
+
+## 🚀 Deployment
+
+| Endpoint | URL | Platform |
+|---|---|---|
+| **Admin Dashboard** | [https://logisight.app](https://logisight.app) | Cloud Run + Firebase Hosting |
+| **API & WebSocket** | [https://api.logisight.app](https://api.logisight.app) | Google Cloud Run |
+| **Driver Mobile App** | [https://driver.logisight.app](https://driver.logisight.app) | Firebase Hosting |
+| **Swagger Docs** | [https://logisight.app/docs](https://logisight.app/docs) | Cloud Run |
+
+<img src="images/dashboard-preview.png" alt="Logisight Dashboard Preview" width="800"/>
+
+---
+
+## 🧠 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Admin Dashboard (React/Vite)              │
+│  Map · Live Ops · Scenarios · Events · Impact · Analytics    │
+└─────────────────────────┬────────────────────────────────── ┘
+                          │ HTTP / WS
+┌─────────────────────────▼──────────────────────────────────┐
+│                   FastAPI Backend (Python 3.11)              │
+│  ┌─────────────┐ ┌──────────┐ ┌────────────────────────┐   │
+│  │Simulation   │ │AI/ML     │ │Google Cloud Integration │   │
+│  │Engine       │ │Engine    │ │Firebase · Pub/Sub       │   │
+│  │(1905 lines) │ │DQN RL    │ │Vertex AI · BigQuery     │   │
+│  │             │ │NSGA-II   │ │Cloud Messaging · CloudSQL│   │
+│  └─────────────┘ └──────────┘ └────────────────────────┘   │
+│  ┌─────────────┐ ┌──────────┐ ┌────────────────────────┐   │
+ │  │Route Planner│ │Event     │ │Cryptographic Audit     │   │
+ │  │OSRM + Fallb.│ │Ingestion │ │SHA-256 Hash-chain      │   │
+│  └─────────────┘ └──────────┘ └────────────────────────┘   │
+└─────────────────────────┬──────────────────────────────────┘
+                          │ HTTP / WS
+┌─────────────────────────▼──────────────────────────────────┐
+│                  Driver Mobile App (React/PWA)               │
+│  Instructions · Incident Report · AI Chat · Real-time Map    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔧 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | Python 3.11+, FastAPI 0.115, Uvicorn |
+| **Database** | PostgreSQL (prod) / SQLite (dev), SQLAlchemy 2.0, Alembic |
+| **Frontend** | React 18, Vite 6, React Router 7, Leaflet, Recharts, Framer Motion |
+| **AI/ML** | PyTorch (DQN RL), scikit-learn, Google Gemini, Groq (LLM) |
+| **Infrastructure** | Docker, Google Cloud Run, Firebase Hosting, Cloud SQL, Pub/Sub, Vertex AI, BigQuery |
+| **Real-time** | WebSocket (FastAPI native) |
+| **Mobile** | Driver PWA (React + Vite) |
+| **i18n** | English, Hindi |
+
+---
+
+## 📊 Tests & CI
+
+| Category | Status | Coverage |
+|---|---|---|
+| **Backend pytest** | ✅ 7 test suites | 20%+ target |
+| **Frontend Vitest** | ✅ 3 test suites (formatters, validators, dashboard utils) | 30+ unit tests |
+| **Driver App Vitest** | ✅ Real unit tests | Added |
+| **CI Pipeline** | ✅ GitHub Actions (lint → test → build → Docker) | [View runs](https://github.com/Technomancers-GDG/logisight/actions) |
+| **Code Coverage** | ✅ pytest-cov with `.coveragerc` | [View on Codecov](https://codecov.io/gh/Technomancers-GDG/logisight) |
+
+```bash
+# Run all backend tests
+python -m pytest tests/ -v --cov=. --cov-report=term
+
+# Run frontend tests
+cd frontend && npx vitest run
+
+# Run driver app tests
+cd driver-app-main && npx vitest run
+```
+
+---
+
+## 🗺️ Database Migrations
+
+Migrations managed via **Alembic** (replaces legacy auto-ALTER TABLE):
+
+```bash
+# Create a new migration
+alembic revision --autogenerate -m "description"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback one step
+alembic downgrade -1
+```
+
+The initial migration (`0001_initial_schema.py`) captures the full schema at project inception. All new columns should be added via Alembic revisions.
+
+---
+
+## 🏁 Quick Start
+
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
+- PostgreSQL (optional, SQLite used by default)
+
+### Backend
 
 ```bash
 python -m venv .venv
@@ -49,100 +157,91 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload
 ```
 
-Backend URLs:
-- API root: `http://127.0.0.1:8000/api/health`
-- Swagger UI: `http://127.0.0.1:8000/docs`
-
-### 2. Frontend development server
-
-In a second terminal:
+### Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev       # → http://localhost:5173
 ```
 
-Frontend URL:
-- Vite app: `http://localhost:5173`
-
-The Vite config proxies `/api` and `/ws` to `http://127.0.0.1:8000`.
-
-## Build Frontend For FastAPI Serving
+### Driver App
 
 ```bash
-cd frontend
-npm run build
-cd ..
-python -m uvicorn main:app --reload
+cd driver-app-main
+npm install
+npm run dev       # → http://localhost:5174
 ```
 
-After build, open `http://127.0.0.1:8000` to use the bundled frontend served by FastAPI.
+### Docker (Full Stack)
 
-## Configuration
+```bash
+docker build -t logisight .
+docker run -p 8000:8000 logisight
+```
 
-Environment variables are defined in [config.py](config.py):
+---
+
+## ⚙️ Configuration
+
+Key environment variables — see `config.py` for the full list.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `APP_NAME` | `Resilient Essential Goods Coordinator` | FastAPI app title |
-| `DATABASE_URL` | `sqlite:///./supply_chain.db` | SQLAlchemy database URL |
-| `OSRM_BASE_URL` | `https://router.project-osrm.org` | Routing provider base URL |
-| `SIMULATION_START_DATE` | `2026-01-01` | Initial simulation date |
-| `SIMULATION_SPEED` | `120.0` | Default speed multiplier |
-| `NEWS_DATASET_PATH` | `All_Cities_News_v2.xlsx` | News workbook path |
-| `WEATHER_DATASET_PATH` | `Historical_Weather_Data_2024_2026.xlsx` | Weather workbook path |
-| `ALLOW_DEMO_SEED` | `true` | Loaded in settings (currently not enforced in startup flow) |
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/supply_chain` | Production database |
+| `GCP_PROJECT_ID` | `logisight-prod` | Google Cloud project |
+| `GCP_REGION` | `asia-south1` | GCP region (Mumbai) |
+| `GEMINI_API_KEY` | — | Google Gemini for AI chat |
+| `GROQ_API_KEY` | — | Groq fallback for AI chat |
+| `FIREBASE_ENABLED` | `true` | Firebase Realtime DB + Auth |
+| `PUBSUB_ENABLED` | `true` | Cloud Pub/Sub event streaming |
+| `VERTEX_AI_ENABLED` | `true` | Vertex AI model hosting |
+| `BIGQUERY_ENABLED` | `true` | BigQuery analytics |
+| `FCM_ENABLED` | `true` | Firebase Cloud Messaging |
+| `SIMULATION_SPEED` | `5000.0` | Default speed multiplier |
+| `DEMO_MODE` | `true` | Auto-start + auto-disruptions |
 
-## Seed Data and Event Import Behavior
+---
 
-On startup:
-- Tables are created automatically.
-- If the `facilities` table is empty, demo data is seeded from [seed_data.py](seed_data.py).
-- If weather/news tables are empty and workbook files exist, startup imports weather + sampled news.
+## 📐 Project Layout
 
-Current demo seed contents:
-- 86 facilities (warehouses and ports)
-- 6 drivers
-- 12 vehicles
-- 44 objectives
-- 10 port links
-- 3 scenario presets
-
-Manual import endpoint:
-- `POST /api/events/import?full_news_import=false|true`
-
-## API Surface (High-Level)
-
-Main endpoint groups in [main.py](main.py):
-- Health: `/api/health`
-- Core entities: `/api/facilities`, `/api/port-links`, `/api/drivers`, `/api/vehicles`, `/api/objectives`
-- Routes/events: `/api/routes`, `/api/events/news`, `/api/events/weather`, `/api/events/import`
-- Simulation: `/api/simulation/start|pause|resume|reset|status`
-- Dashboard/metrics: `/api/dashboard`, `/api/metrics/sdg`
-- Recommendations and driver loop: `/api/recommendations`, `/api/driver-decisions`, `/api/driver/{driver_id}/mobile`, `/api/driver/decision`, `/api/driver/incidents`
-- Scenarios: `/api/scenarios`, `/api/scenarios/{scenario_key}/trigger`, `/api/scenarios/{scenario_key}/compare`
-- Demo scaling: `/api/demo/scale-fleet`
-- Realtime stream: `/ws/operations`
-
-## Tests
-
-Backend tests:
-
-```bash
-python -m pytest tests/test_simulation.py -q
+```
+logisight/
+├── main.py                        # FastAPI entry point
+├── config.py                      # Settings with env validation
+├── database.py                    # SQLAlchemy + Alembic migrations
+├── models.py                      # ORM models (20+ tables)
+├── requirements.txt               # Python dependencies
+├── alembic.ini / alembic/         # Database migrations
+├── .github/workflows/ci.yml       # CI/CD pipeline
+├── .coveragerc                    # Code coverage config
+├── firebase-service-account.json.template  # GCP credentials template
+├── gcp_config.yaml.template       # GCP configuration template
+├── Dockerfile                     # Multi-stage Docker build
+├── render.yaml                    # Render Blueprint config
+├── routes/                        # API route modules (12 files)
+├── services/                      # Business logic services (25 modules)
+│   ├── simulation/engine.py       # Core simulation engine (1905 lines)
+│   ├── rl_decision_engine.py      # DQN-based RL agent
+│   ├── multi_objective_optimizer.py  # NSGA-II optimizer
+│   ├── blockchain_audit.py        # Cryptographic audit trail (SHA-256 hash-chain)
+│   ├── google_cloud_integration.py  # GCP services (Firebase, Pub/Sub, Vertex AI, BigQuery, FCM)
+│   └── ...
+├── schemas/                       # Pydantic schemas (17 files)
+├── middleware/                     # Auth middleware (API key, Firebase)
+├── frontend/                      # Admin dashboard (React + Vite)
+│   ├── src/components/views/      # 23 view components
+│   └── src/i18n/                  # Bilingual translations
+├── driver-app-main/               # Driver mobile app (React + Vite)
+└── tests/                         # Backend tests (pytest)
 ```
 
-Notes about frontend tests:
-- Test files exist in [frontend/tests/](frontend/tests/).
-- `frontend/package.json` does not currently define a `test` script or include Vitest dependency.
+---
 
-## Project Layout
+## 📖 Documentation
 
-- [main.py](main.py): FastAPI app and API routes.
-- [services/simulation.py](services/simulation.py): simulation and decision engines.
-- [services/route_planner.py](services/route_planner.py): OSRM + fallback route templates.
-- [services/event_ingestion.py](services/event_ingestion.py): weather/news workbook import pipeline.
-- [seed_data.py](seed_data.py): initial network, fleet, objectives, and scenarios.
-- [frontend/src/App.jsx](frontend/src/App.jsx): current main frontend shell.
-- [frontend/src/components/views/MapView.jsx](frontend/src/components/views/MapView.jsx): map and route visualization.
+- [Demo Script](./DEMO_GUIDE.md) — 5-7 minute walkthrough for judges
+- [Deployment Guide](./DEPLOYMENT_GUIDE.md) — Nginx, Docker, Render + cron-job.org
+- [GCP Free Tier Deploy](./DEPLOY_GCP_FREE.md) — Cloud Run + Firebase Hosting
+- [Driver App Setup](./DRIVER_APP_SETUP.md) — Architecture and data flow
+- [Frontend Quick Start](./FRONTEND_QUICK_START.md) — Development reference

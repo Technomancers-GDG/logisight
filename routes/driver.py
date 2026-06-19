@@ -31,6 +31,7 @@ from schemas import (
     DriverResponseRequest,
     RecommendationDecisionRequest,
     RecommendationRead,
+    SpotlightRequest,
 )
 
 driver_router = APIRouter(tags=["Driver"])
@@ -178,16 +179,8 @@ def submit_driver_decision(
 
 # --- Spotlight ---
 @driver_router.post("/api/simulation/spotlight")
-def set_spotlight(payload: dict) -> dict:
-    raw = payload.get("driver_id")
-    if raw is not None:
-        try:
-            simulation_engine.spotlight_driver_id = int(raw)
-        except (ValueError, TypeError):
-            logger.warning("spotlight: invalid driver_id %r", raw)
-            simulation_engine.spotlight_driver_id = None
-    else:
-        simulation_engine.spotlight_driver_id = None
+def set_spotlight(payload: SpotlightRequest) -> dict:
+    simulation_engine.spotlight_driver_id = payload.driver_id
     return {"spotlight_driver_id": simulation_engine.spotlight_driver_id}
 
 

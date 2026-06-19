@@ -45,7 +45,7 @@ def encode_polyline(points: list[tuple[float, float]]) -> str:
     return res
 
 
-def _decode_polyline(encoded: str, precision: int = 5) -> list[tuple[float, float]]:
+def _decode_polyline(encoded: str | None, precision: int = 5) -> list[tuple[float, float]]:
     """Decode a Google Polyline encoded string into lat/lng pairs."""
     if not encoded:
         return []

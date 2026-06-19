@@ -38,6 +38,10 @@ class DriverResponseRequest(BaseModel):
     note: str = ""
 
 
+class SpotlightRequest(BaseModel):
+    driver_id: int | None = None
+
+
 class RecommendationDecisionRequest(BaseModel):
     decision: str = Field(pattern="^(accept|ignore)$")
 

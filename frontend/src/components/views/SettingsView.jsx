@@ -1,5 +1,5 @@
 export function SettingsView({ lang, onSwitchLang, t, onSetSpeed, currentSpeed, isClient }) {
-  const speedOptions = [1, 5, 15, 30, 60, 120, 180, 500, 1000, 5000, 100000];
+  const speedOptions = [1, 5, 15, 30, 60, 120, 180];
   
   return (
     <div className="view-settings" style={{ maxWidth: 640, margin: "0 auto" }}>

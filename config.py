@@ -34,7 +34,7 @@ class Settings:
     rl_model_path: str
     use_rl_engine: bool
     use_nsga2_optimizer: bool
-    # Blockchain
+    # Cryptographic Audit (SHA-256 hash-chain ledger)
     blockchain_ledger_path: str
     # Google Cloud
     gcp_project_id: str
@@ -64,9 +64,27 @@ def _get_bool_env(name: str, default: str) -> bool:
     return _get_env(name, default).lower() in {"1", "true", "yes"}
 
 
+def _validate_settings(s: Settings) -> None:
+    import logging
+    logger = logging.getLogger(__name__)
+    warnings: list[str] = []
+    if not s.gemini_api_key and not s.groq_api_key:
+        warnings.append("GEMINI_API_KEY and GROQ_API_KEY are both empty — AI chat will fall back to rule-based responses")
+    if s.database_url.startswith("sqlite") and s.demo_mode is False:
+        warnings.append("Using SQLite in non-demo mode — consider PostgreSQL for production")
+    if not s.gcp_project_id:
+        warnings.append("GCP_PROJECT_ID is not set — Google Cloud integrations will run in stub mode")
+    if s.firebase_enabled and not s.gcp_project_id:
+        warnings.append("FIREBASE_ENABLED=true but GCP_PROJECT_ID is empty")
+    if s.vertex_ai_enabled and not s.gcp_project_id:
+        warnings.append("VERTEX_AI_ENABLED=true but GCP_PROJECT_ID is empty")
+    for w in warnings:
+        logger.warning("Config: %s", w)
+
+
 def load_settings() -> Settings:
     import secrets as _secrets
-    return Settings(
+    s = Settings(
         app_name=_get_env("APP_NAME", "Resilient Essential Goods Coordinator"),
         database_url=_get_env("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/supply_chain"),
         osrm_base_url=_get_env("OSRM_BASE_URL", "https://router.project-osrm.org"),
@@ -93,7 +111,7 @@ def load_settings() -> Settings:
         rl_model_path=_get_env("RL_MODEL_PATH", "data/rl_model.json"),
         use_rl_engine=_get_bool_env("USE_RL_ENGINE", "true"),
         use_nsga2_optimizer=_get_bool_env("USE_NSGA2_OPTIMIZER", "true"),
-        # Blockchain
+        # Cryptographic Audit trail
         blockchain_ledger_path=_get_env("BLOCKCHAIN_LEDGER_PATH", "data/blockchain_ledger.json"),
         # Google Cloud
         gcp_project_id=_get_env("GCP_PROJECT_ID", ""),
@@ -119,6 +137,8 @@ def load_settings() -> Settings:
         ],
         ai_rate_limit_per_min=int(_get_env("AI_RATE_LIMIT_PER_MIN", "10")),
     )
+    _validate_settings(s)
+    return s
 
 
 settings = load_settings()

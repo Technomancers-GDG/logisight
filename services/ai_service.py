@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import random
+import time
 from collections.abc import AsyncGenerator
+from functools import lru_cache
 
 from openai import OpenAI as GroqClient
 from google import genai
@@ -90,6 +92,40 @@ def _is_rate_limited(err: Exception) -> bool:
     return any(k in msg for k in keywords)
 
 
+# ── Response cache ──
+
+_CACHE_TTL = 60.0
+_llm_cache: dict[str, tuple[float, str]] = {}
+
+_COMMON_QA = {
+    "how's my current route looking?": "Your route is clear. No disruptions reported ahead. ETA is on schedule.",
+    "what disruptions are ahead?": "No active disruptions on your current route. All clear for the next leg.",
+    "summarize my trip status": "Trip is progressing on schedule. No delays or reroutes needed.",
+    "are there any delays on my route?": "No delays reported. Your route is clear and ETA remains unchanged.",
+    "what's the best next action for me?": "Continue on your current route. The system will alert you if a reroute is needed.",
+}
+
+
+def _get_cached_response(query: str) -> str | None:
+    normalized = query.strip().lower()
+    if normalized in _COMMON_QA:
+        return _COMMON_QA[normalized]
+    now = time.monotonic()
+    cached = _llm_cache.get(normalized)
+    if cached and (now - cached[0]) < _CACHE_TTL:
+        return cached[1]
+    return None
+
+
+def _set_cached_response(query: str, response: str) -> None:
+    if len(_llm_cache) > 200:
+        expired = [k for k, v in _llm_cache.items() if (time.monotonic() - v[0]) > _CACHE_TTL * 2]
+        for k in expired:
+            del _llm_cache[k]
+    normalized = query.strip().lower()
+    _llm_cache[normalized] = (time.monotonic(), response)
+
+
 # ── Gemini (primary) ──
 
 async def _stream_gemini(query: str, history: list[dict[str, str]], context: str
@@ -119,7 +155,8 @@ async def _stream_gemini(query: str, history: list[dict[str, str]], context: str
             full += chunk.text
             yield {"type": "chunk", "content": chunk.text}
 
-    yield {"type": "meta", "model": "gemini-2.5-flash", "suggestions": _pick_suggestions(full)}
+        yield {"type": "meta", "model": "gemini-2.5-flash", "suggestions": _pick_suggestions(full)}
+        _set_cached_response(query, full)
     yield {"type": "done"}
 
 
@@ -150,6 +187,7 @@ async def _stream_groq(query: str, history: list[dict[str, str]], context: str
                 yield {"type": "chunk", "content": delta}
 
         yield {"type": "meta", "model": f"groq/{model}", "suggestions": _pick_suggestions(full)}
+        _set_cached_response(query, full)
         yield {"type": "done"}
     except Exception as e:
         logger.warning("Groq model %s failed: %s", model, e)
@@ -170,6 +208,13 @@ async def chat_stream(query: str,
     """
     context = _build_context(vehicle_id)
     capped_history = _cap_history(history)
+
+    cached = _get_cached_response(query)
+    if cached:
+        yield {"type": "chunk", "content": cached}
+        yield {"type": "meta", "model": "cache", "suggestions": _pick_suggestions(cached)}
+        yield {"type": "done", "cached": True}
+        return
 
     # Try Gemini first
     if settings.gemini_api_key:

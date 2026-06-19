@@ -1,0 +1,22 @@
+[run]
+source = .
+omit =
+    tests/*
+    seed_data.py
+    .venv/*
+    */site-packages/*
+    static/*
+    images/*
+    public/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == "__main__":
+    raise NotImplementedError
+    raise AssertionError
+    pass
+    def __repr__
+    def __str__
+
+fail_under = 20

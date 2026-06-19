@@ -79,6 +79,7 @@ const TRANSLATIONS = {
     pause: "Pause",
     resume: "Resume",
     reset: "Reset",
+    bypassLabel: "Accept AI ⚡",
     language: "Language",
     english: "English",
     hindi: "Hindi",
@@ -138,6 +139,7 @@ const TRANSLATIONS = {
     pause: "रोकें",
     resume: "फिर से शुरू",
     reset: "रीसेट",
+    bypassLabel: "AI स्वीकारें ⚡",
     language: "भाषा",
     english: "अंग्रेज़ी",
     hindi: "हिंदी",
@@ -345,7 +347,7 @@ function StatusBar({ dashboard, metrics, t, clientContext }) {
 }
 
 function SimControls({ onAction, onSetSpeed, currentSpeed, t }) {
-  const options = [120, 180, 500, 1000, 5000, 50000, 100000];
+  const options = [1, 15, 30, 60, 120, 180];
   return (
     <div className="sim-controls">
       <button className="sim-btn primary" onClick={() => onAction("/api/simulation/start", { speed_multiplier: 180 }, t.start)}>{t.start}</button>
@@ -355,6 +357,7 @@ function SimControls({ onAction, onSetSpeed, currentSpeed, t }) {
       <select className="speed-select" value={currentSpeed >= options[options.length-1] ? options[options.length-1] : currentSpeed} onChange={e => onSetSpeed(Number(e.target.value))}>
         {options.map(s => <option key={s} value={s}>{s}x</option>)}
       </select>
+      <button className="sim-btn demo" onClick={() => onAction("/api/simulation/spotlight", {}, t.bypassLabel)} title="Simulate driver accepting the latest recommendation">{t.bypassLabel}</button>
     </div>
   );
 }

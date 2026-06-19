@@ -223,6 +223,43 @@ async def scale_demo_fleet(
     return result
 
 
+@simulation_router.post("/api/demo/simulate-driver-decision")
+async def simulate_driver_decision(session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Simulate the driver accepting the latest pending recommendation
+    for any vehicle — bypasses the mobile PWA for demo reliability."""
+    latest = session.scalar(
+        select(Recommendation).where(Recommendation.status == "suggested")
+        .order_by(Recommendation.created_at.desc()).limit(1)
+    )
+    if latest is None:
+        return {"status": "no_pending", "detail": "No pending recommendations found"}
+    vehicle = session.get(Vehicle, latest.vehicle_id)
+    if vehicle is None:
+        return {"status": "error", "detail": "Vehicle not found"}
+    driver = session.get(DriverProfile, vehicle.driver_profile_id)
+    if driver is None:
+        return {"status": "error", "detail": "Driver not found"}
+    latest.status = "accepted"
+    driver.override_rating = round(min(2.0, driver.override_rating + 0.05), 3)
+    decision = DriverDecision(
+        recommendation_id=latest.id, driver_profile_id=driver.id, vehicle_id=vehicle.id,
+        decision="accepted",
+        actual_trip_cost=latest.recommended_cost,
+        recommended_trip_cost=latest.recommended_cost,
+        rating_delta=0.05,
+        note="Auto-accepted (demo bypass).",
+    )
+    session.add(decision)
+    session.commit()
+    return {
+        "status": "accepted",
+        "recommendation_id": latest.id,
+        "vehicle_id": vehicle.id,
+        "driver_id": driver.id,
+        "action": latest.action,
+    }
+
+
 @simulation_router.post("/api/demo/judge-mode")
 async def judge_demo_mode(session: Session = Depends(get_session)) -> dict[str, Any]:
     """One-click demo for judges: scale fleet, trigger disruption, start simulation."""

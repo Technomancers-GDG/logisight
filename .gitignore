@@ -29,6 +29,7 @@ Thumbs.db
 
 # Coverage
 .coverage
+coverage.xml
 htmlcov/
 coverage/
 
