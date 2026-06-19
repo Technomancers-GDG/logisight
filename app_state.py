@@ -19,6 +19,20 @@ from services.route_planner import RoutePlanner
 from services.simulation import SimulationEngine
 from services.simulation_manager import simulation_manager
 
+# ── Pre-load cached OSMnx graphs ────────────────────────────────────────
+# Loads pre-downloaded .graphml files for demo cities so the routing tier
+# can snap to road networks without an OSM server call at demo time.
+if settings.route_use_osmnx:
+    from services.osmnx_router import _load_cached_graphs as _load_osmnx
+    _loaded = _load_osmnx(settings.osmnx_graphs_dir)
+    if _loaded:
+        import logging
+        logging.getLogger(__name__).info(
+            "Pre-loaded OSMnx graphs for %d demo city/cities: %s",
+            len(_loaded), ", ".join(sorted(_loaded)),
+        )
+# ────────────────────────────────────────────────────────────────────────
+
 class LazyService:
     def __init__(self, factory):
         self._factory = factory

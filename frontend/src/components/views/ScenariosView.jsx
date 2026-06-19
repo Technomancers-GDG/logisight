@@ -51,11 +51,15 @@ function ParetoChart({ data }) {
 export function ScenariosView({ scenarios = [], apiFetch }) {
   const [selected, setSelected] = useState(null);
   const [running, setRunning] = useState(false);
+  const [severitySlider, setSeveritySlider] = useState(5);
 
   async function runScenario(id) {
     setRunning(true);
     try {
-      const data = await apiFetch("/api/scenarios/" + id + "/trigger", { method: "POST" });
+      const data = await apiFetch("/api/scenarios/" + id + "/trigger", {
+        method: "POST",
+        body: JSON.stringify({ severity_override: severitySlider / 10 }),
+      });
       setSelected(data);
     } catch {}
     setRunning(false);
@@ -64,6 +68,19 @@ export function ScenariosView({ scenarios = [], apiFetch }) {
   return (
     <div className="view-scenarios" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1rem" }}>
       <Panel title="What-If Scenarios">
+        <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#0f172a", borderRadius: "8px" }}>
+          <label style={{ color: "#94a3b8", fontSize: "0.85rem", display: "block", marginBottom: "0.35rem" }}>
+            Severity Override: <strong style={{ color: "#f8fafc" }}>{severitySlider}/10</strong>
+          </label>
+          <input
+            type="range" min="1" max="10" value={severitySlider}
+            onChange={(e) => setSeveritySlider(Number(e.target.value))}
+            style={{ width: "100%", accentColor: "#ef4444", cursor: "pointer" }}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#64748b", marginTop: "0.15rem" }}>
+            <span>Minor</span><span>Severe</span>
+          </div>
+        </div>
         {scenarios.length === 0 ? (
           <div className="empty" style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
             No scenarios defined.

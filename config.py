@@ -22,6 +22,9 @@ class Settings:
     allow_demo_seed: bool
     demo_mode: bool
     route_use_osrm: bool
+    route_use_osmnx: bool
+    osmnx_graph_path: str
+    osmnx_graphs_dir: str
     news_model_artifact_path: Path
     demo_disruption_delay_seconds: int
     demo_disruption_city: str
@@ -51,6 +54,9 @@ class Settings:
     # Groq (fallback)
     groq_api_key: str
     groq_models: list[str]
+    # Redis (horizontal WebSocket scaling)
+    use_redis: bool
+    redis_url: str
     # Rate limiting
     ai_rate_limit_per_min: int
 
@@ -98,7 +104,10 @@ def load_settings() -> Settings:
         ),
         allow_demo_seed=_get_bool_env("ALLOW_DEMO_SEED", "true"),
         demo_mode=_get_bool_env("DEMO_MODE", "true"),
-        route_use_osrm=_get_bool_env("ROUTE_USE_OSRM", "false"),
+        route_use_osrm=_get_bool_env("ROUTE_USE_OSRM", "true"),
+        route_use_osmnx=_get_bool_env("ROUTE_USE_OSMNX", "false"),
+        osmnx_graph_path=_get_env("OSMNX_GRAPH_PATH", "data/osmnx_graph.graphml"),
+        osmnx_graphs_dir=_get_env("OSMNX_GRAPHS_DIR", "data/osmnx_graphs"),
         news_model_artifact_path=Path(_get_env("NEWS_MODEL_ARTIFACT_PATH", "news_model.pkl")),
         demo_disruption_delay_seconds=int(_get_env("DEMO_DISRUPTION_DELAY_SECONDS", "4")),
         demo_disruption_city=_get_env("DEMO_DISRUPTION_CITY", "Chennai"),
@@ -135,6 +144,8 @@ def load_settings() -> Settings:
             "gemma2-9b-it",
             "llama-3.2-3b-preview",
         ],
+        use_redis=_get_bool_env("USE_REDIS", "false"),
+        redis_url=_get_env("REDIS_URL", ""),
         ai_rate_limit_per_min=int(_get_env("AI_RATE_LIMIT_PER_MIN", "10")),
     )
     _validate_settings(s)

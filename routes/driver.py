@@ -172,7 +172,10 @@ def submit_driver_decision(
 
     objective = session.get(Objective, recommendation.objective_id)
     if objective:
-        simulation_engine.resolve_spotlight_decision(vehicle, recommendation, objective, payload.decision)
+        import asyncio
+        asyncio.ensure_future(
+            simulation_engine.resolve_spotlight_decision(session, vehicle, recommendation, objective, payload.decision)
+        )
     session.refresh(decision)
     return decision
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from math import asin, cos, radians, sin, sqrt
 
@@ -136,6 +137,38 @@ class RoutePlanner:
         session.expunge(route)
         return route
 
+    async def get_or_create_template_async(
+        self, session: Session, origin: Facility, destination: Facility
+    ) -> RouteTemplate:
+        """Async variant — event-loop-friendly OSRM call via ``AsyncClient``."""
+        key = self.route_key(origin.id, destination.id)
+        existing = session.scalar(select(RouteTemplate).where(RouteTemplate.route_key == key))
+        if existing is not None:
+            session.expunge(existing)
+            return existing
+
+        route_data = None
+        if self.use_osrm:
+            route_data = await self._fetch_osrm_route_async(origin, destination)
+        if route_data is None:
+            route_data = self._estimated_route(origin, destination)
+
+        route = RouteTemplate(
+            route_key=key,
+            origin_facility_id=origin.id,
+            destination_facility_id=destination.id,
+            distance_km=route_data["distance_km"],
+            duration_minutes=route_data["duration_minutes"],
+            encoded_polyline=route_data["encoded_polyline"],
+            steps=route_data["steps"],
+            source=route_data["source"],
+            refreshed_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        )
+        session.add(route)
+        session.flush()
+        session.expunge(route)
+        return route
+
     def prewarm_objective_routes(
         self,
         session: Session,
@@ -183,7 +216,64 @@ class RoutePlanner:
                 time.sleep(0.2)
             with httpx.Client(timeout=8.0) as client:
                 response = client.get(url)
-            # Will raise HTTPStatusError for 4xx/5xx
+            response.raise_for_status()
+            payload = response.json()
+            routes = payload.get("routes", [])
+            if not routes:
+                self.logger.warning("OSRM returned empty routes array; URL=%s", url)
+                self.logger.debug("OSRM response payload: %s", payload)
+                return None
+            route = routes[0]
+            leg = route["legs"][0]
+            steps = [
+                {
+                    "name": step.get("name") or step.get("ref") or "Unnamed segment",
+                    "distance_km": round(step.get("distance", 0.0) / 1000, 2),
+                    "duration_minutes": round(step.get("duration", 0.0) / 60, 2),
+                }
+                for step in leg.get("steps", [])[:12]
+            ]
+            return {
+                "distance_km": round(route.get("distance", 0.0) / 1000, 2),
+                "duration_minutes": round(route.get("duration", 0.0) / 60, 2),
+                "encoded_polyline": self._sanitize_polyline(route.get("geometry", "")),
+                "steps": steps,
+                "source": "osrm",
+            }
+        except httpx.HTTPStatusError as e:
+            resp = getattr(e, "response", None)
+            status = getattr(resp, "status_code", None)
+            body = None
+            try:
+                body = resp.text if resp is not None else None
+            except Exception:
+                body = None
+            self.logger.exception(
+                "OSRM HTTP error: %s URL=%s status=%s body=%s", e, url, status, body
+            )
+            return None
+        except Exception as e:
+            self.logger.exception("OSRM request failed: %s URL=%s", e, url)
+            return None
+
+    async def _fetch_osrm_route_async(
+        self, origin: Facility, destination: Facility
+    ) -> dict[str, object] | None:
+        """Async variant of ``_fetch_osrm_route`` — does not block the event loop."""
+        coordinates = (
+            f"{origin.longitude},{origin.latitude};"
+            f"{destination.longitude},{destination.latitude}"
+        )
+        url = (
+            f"{self.osrm_base_url}/route/v1/driving/{coordinates}"
+            "?overview=full&steps=true&geometries=polyline"
+        )
+        try:
+            import time
+            if "router.project-osrm.org" in self.osrm_base_url:
+                await asyncio.sleep(0.2)
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                response = await client.get(url)
             response.raise_for_status()
             payload = response.json()
             routes = payload.get("routes", [])

@@ -176,16 +176,18 @@ def test_resolve_spotlight_no_route_does_not_schedule(engine: SimulationEngine, 
     obj = seeded_session.get(Objective, 1)
 
     queue_before = len(engine.event_queue)
-    engine.resolve_spotlight_decision(vehicle, rec, obj, "accepted")
+    import asyncio
+    asyncio.run(engine.resolve_spotlight_decision(seeded_session, vehicle, rec, obj, "accepted"))
     assert len(engine.event_queue) == queue_before
     assert engine.live_vehicle_states[1].status == "loading"
 
 
-def test_resolve_spotlight_no_state_returns_early(engine: SimulationEngine, seeded_session: Session) -> None:
+@pytest.mark.asyncio(loop_scope="module")
+async def test_resolve_spotlight_no_state_returns_early(engine: SimulationEngine, seeded_session: Session) -> None:
     vehicle = Vehicle(id=999, identifier="GHOST")
     from models import Recommendation
     rec = Recommendation(id=1, vehicle_id=999)
-    engine.resolve_spotlight_decision(vehicle, rec, None, "accepted")
+    await engine.resolve_spotlight_decision(seeded_session, vehicle, rec, None, "accepted")
     assert True
 
 

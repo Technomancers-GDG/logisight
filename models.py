@@ -111,6 +111,40 @@ class Vehicle(Base):
     home_facility: Mapped[Facility] = relationship("Facility", foreign_keys=[home_facility_id])
     current_facility: Mapped[Facility] = relationship("Facility", foreign_keys=[current_facility_id])
     driver_profile: Mapped[DriverProfile] = relationship("DriverProfile", lazy="joined")
+    dynamic_state: Mapped[Optional[VehicleDynamicState]] = relationship(
+        "VehicleDynamicState", back_populates="vehicle", uselist=False, cascade="all, delete-orphan"
+    )
+
+
+class VehicleDynamicState(Base):
+    """Dynamic runtime state of a vehicle, separated from static configuration.
+
+    This table receives writes during simulation ticks (status, lat/lng,
+    available_at) while the parent ``vehicles`` table keeps static info
+    (identifier, capacity, driver, etc.).  The split lets the static schema
+    remain stable while the dynamic rows can be rotated, archived, or
+    replicated at high frequency without schema locks.
+    """
+
+    __tablename__ = "vehicle_dynamic_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(
+        ForeignKey("vehicles.id", ondelete="CASCADE"), unique=True, nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(String(40), default="idle")
+    current_facility_id: Mapped[int] = mapped_column(
+        ForeignKey("facilities.id"), nullable=True
+    )
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False
+    )
+
+    vehicle: Mapped[Vehicle] = relationship("Vehicle", back_populates="dynamic_state")
 
 
 class Objective(Base):

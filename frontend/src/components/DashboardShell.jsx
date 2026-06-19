@@ -511,6 +511,8 @@ export default function DashboardShell({ user, onLogout, clientContext }) {
       authHeaders["X-API-Key"] = clientContext.apiKey;
     } else if (clientContext?.firebaseToken) {
       authHeaders["Authorization"] = `Bearer ${clientContext.firebaseToken}`;
+    } else {
+      authHeaders["X-API-Key"] = window.MOCK_API_KEY || localStorage.getItem("demo_api_key") || "demo_key_logisight_2026";
     }
     const response = await fetch(`${API_BASE}${path}`, {
       headers: { "Content-Type": "application/json", ...authHeaders, ...(optHeaders ?? {}) },

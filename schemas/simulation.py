@@ -116,3 +116,7 @@ class ScenarioComparisonRead(BaseModel):
     baseline: ScenarioComparisonMetrics
     ai: ScenarioComparisonMetrics
     improvement_summary: dict[str, float]
+
+
+class TriggerScenarioRequest(BaseModel):
+    severity_override: float | None = None

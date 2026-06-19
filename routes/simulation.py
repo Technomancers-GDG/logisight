@@ -39,7 +39,9 @@ from schemas import (
     FleetScaleResult,
     ScenarioComparisonMetrics,
     ScenarioComparisonRead,
+    TriggerScenarioRequest,
 )
+from middleware.api_key_auth import verify_or_demo_api_key
 from services.driver_performance import DriverPerformanceService
 
 simulation_router = APIRouter(tags=["Simulation & Demo"])
@@ -261,7 +263,10 @@ async def simulate_driver_decision(session: Session = Depends(get_session)) -> d
 
 
 @simulation_router.post("/api/demo/judge-mode")
-async def judge_demo_mode(session: Session = Depends(get_session)) -> dict[str, Any]:
+async def judge_demo_mode(
+    session: Session = Depends(get_session),
+    _client: None = Depends(verify_or_demo_api_key),
+) -> dict[str, Any]:
     """One-click demo for judges: scale fleet, trigger disruption, start simulation."""
     _execute_fleet_scale(session, target_vehicle_count=60)
     await simulation_engine.reset()
@@ -309,18 +314,27 @@ def list_scenarios(session: Session = Depends(get_session)) -> list[ScenarioPres
 
 
 @simulation_router.post("/api/scenarios/{scenario_key}/trigger")
-def trigger_scenario(scenario_key: str, session: Session = Depends(get_session)) -> dict[str, Any]:
+def trigger_scenario(
+    scenario_key: str,
+    body: TriggerScenarioRequest | None = None,
+    session: Session = Depends(get_session),
+    _client: None = Depends(verify_or_demo_api_key),
+) -> dict[str, Any]:
     scenario = session.scalar(select(ScenarioPreset).where(ScenarioPreset.scenario_key == scenario_key, ScenarioPreset.active.is_(True)))
     if scenario is None:
         raise HTTPException(status_code=404, detail="Scenario not found")
+
+    severity = scenario.severity
+    if body is not None and body.severity_override is not None:
+        severity = min(0.99, max(0.01, body.severity_override))
 
     event_date = simulation_engine.simulation_time.date()
     event = NewsEvent(
         original_date=event_date, simulation_date=event_date, city=scenario.event_city,
         category="Scenario Trigger", headline=f"Scenario triggered: {scenario.name}",
         relevant=True, impact_type=scenario.event_type,
-        impact_score=min(0.99, max(0.0, scenario.severity)),
-        model_probability=min(0.99, max(0.0, scenario.severity)),
+        impact_score=min(0.99, max(0.0, severity)),
+        model_probability=min(0.99, max(0.0, severity)),
     )
     session.add(event)
     session.commit()
@@ -336,7 +350,7 @@ def trigger_scenario(scenario_key: str, session: Session = Depends(get_session))
                 if link.warehouse_id == facility.id or link.port_id == facility.id:
                     other = session.get(Facility, link.port_id if link.warehouse_id == facility.id else link.warehouse_id)
                     if other:
-                        cascade.append({"from_facility_id": facility.id, "from_facility_name": facility.name, "to_facility_id": other.id, "to_facility_name": other.name, "link_type": "port_spillover", "severity": scenario.severity})
+                        cascade.append({"from_facility_id": facility.id, "from_facility_name": facility.name, "to_facility_id": other.id, "to_facility_name": other.name, "link_type": "port_spillover", "severity": severity})
 
     proactive = []
     if cascade:
@@ -357,13 +371,13 @@ def trigger_scenario(scenario_key: str, session: Session = Depends(get_session))
         for place, pressure in [(origin, "origin"), (dest, "destination")]:
             if place and str(place.city).strip().lower() in affected_cities:
                 old_interval = objective.dispatch_interval_minutes
-                new_interval = max(30, int(old_interval * (1.0 - scenario.severity * (0.35 if pressure == "origin" else 0.25))))
+                new_interval = max(30, int(old_interval * (1.0 - severity * (0.35 if pressure == "origin" else 0.25))))
                 objective.dispatch_interval_minutes = new_interval
                 demand_shock.append({"objective_id": objective.id, "objective_name": objective.name, "city": place.city, "old_interval": old_interval, "new_interval": new_interval, "pressure": pressure})
     if demand_shock:
         session.commit()
 
-    return {"status": "triggered", "scenario_key": scenario.scenario_key, "event_city": scenario.event_city, "severity": scenario.severity, "cascade_affected_links": cascade, "cascade_count": len(cascade), "proactive_dispatches": proactive, "proactive_count": len(proactive), "demand_shock": demand_shock, "demand_shock_count": len(demand_shock)}
+    return {"status": "triggered", "scenario_key": scenario.scenario_key, "event_city": scenario.event_city, "severity": severity, "severity_original": scenario.severity, "severity_overridden": body is not None and body.severity_override is not None, "cascade_affected_links": cascade, "cascade_count": len(cascade), "proactive_dispatches": proactive, "proactive_count": len(proactive), "demand_shock": demand_shock, "demand_shock_count": len(demand_shock)}
 
 
 @simulation_router.get("/api/scenarios/{scenario_key}/compare", response_model=ScenarioComparisonRead)

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import WebSocket
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from config import settings
 from database import SessionLocal
@@ -30,6 +30,7 @@ from models import (
     RouteTemplate,
     SimEvent,
     Vehicle,
+    VehicleDynamicState,
     WeatherEvent,
 )
 from schemas import (
@@ -104,6 +105,7 @@ class SimulationEngine:
         self.last_metrics_snapshot_hour: tuple[int, int, int, int] | None = None
         self.spotlight_driver_id: int | None = None
         self._last_cascade_check: datetime | None = None
+        self._last_dynamic_sync_time: float = 0.0  # wall-clock seconds, for batching DB writes
         # RL decision tracking
         self.rl_decisions_count: int = 0
         self.rule_decisions_count: int = 0
@@ -159,7 +161,14 @@ class SimulationEngine:
             objective.id: objective for objective in session.scalars(select(Objective).where(obj_where)).all()
         }
         veh_where = Vehicle.client_id == self.client_id if self.client_id is not None else Vehicle.client_id.is_(None)
-        self.vehicles = {vehicle.id: vehicle for vehicle in session.scalars(select(Vehicle).where(veh_where)).all()}
+        self.vehicles = {
+            vehicle.id: vehicle
+            for vehicle in session.scalars(
+                select(Vehicle)
+                .options(selectinload(Vehicle.dynamic_state))
+                .where(veh_where)
+            ).all()
+        }
         drv_where = DriverProfile.client_id == self.client_id if self.client_id is not None else DriverProfile.client_id.is_(None)
         self.drivers = {
             driver.id: driver for driver in session.scalars(select(DriverProfile).where(drv_where)).all()
@@ -234,6 +243,34 @@ class SimulationEngine:
                     "headline": row.headline,
                     "category": row.category,
                 }
+
+    def _sync_vehicle_dynamic_states(self, session: Session) -> None:
+        """Dual-write dynamic vehicle fields to ``vehicle_dynamic_state``.
+
+        Batches DB writes to at most once every 3 wall-clock seconds.
+        High-frequency telemetry is delivered via WebSocket in the main
+        loop regardless — the database is the persistent fallback, not
+        the real-time channel.
+        """
+        import time as _time
+
+        now = _time.time()
+        if now - self._last_dynamic_sync_time < 3.0:
+            return
+        self._last_dynamic_sync_time = now
+
+        from datetime import datetime, timezone
+
+        for vehicle in self.vehicles.values():
+            if vehicle.dynamic_state is None:
+                dstate = VehicleDynamicState(vehicle_id=vehicle.id)
+                session.add(dstate)
+                session.flush()
+                vehicle.dynamic_state = dstate
+            vehicle.dynamic_state.status = vehicle.status
+            vehicle.dynamic_state.current_facility_id = vehicle.current_facility_id
+            vehicle.dynamic_state.available_at = vehicle.available_at
+            vehicle.dynamic_state.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     # ── State Persistence ─────────────────────────────────────────
 
@@ -473,6 +510,11 @@ class SimulationEngine:
                 vehicle.current_facility_id = vehicle.home_facility_id
                 vehicle.status = "idle"
                 vehicle.available_at = None
+                if vehicle.dynamic_state is not None:
+                    vehicle.dynamic_state.status = "idle"
+                    vehicle.dynamic_state.current_facility_id = vehicle.home_facility_id
+                    vehicle.dynamic_state.available_at = None
+                    vehicle.dynamic_state.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             for driver in session.scalars(select(DriverProfile)).all():
                 driver.override_rating = max(driver.override_rating, 1.0)
             session.commit()
@@ -528,7 +570,7 @@ class SimulationEngine:
                                 if event.event_type == 'dispatch' and batch_count > 0:
                                     session.commit()
                                 
-                                self._process_event(session, event)
+                                await self._process_event(session, event)
                                 processed += 1
                                 batch_count += 1
                             except Exception as exc:
@@ -542,6 +584,7 @@ class SimulationEngine:
                                 await asyncio.sleep(0)
                                 batch_count = 0
                         if processed:
+                            self._sync_vehicle_dynamic_states(session)
                             session.commit()
                             if not turbo:
                                 self._check_autonomous_cascade(session)
@@ -575,17 +618,17 @@ class SimulationEngine:
 
     # ── Event Processing ────────────────────────────────────────────
 
-    def _process_event(self, session: Session, event: ScheduledEvent) -> None:
+    async def _process_event(self, session: Session, event: ScheduledEvent) -> None:
         if event.event_type == "dispatch":
-            self._handle_dispatch(session, event)
+            await self._handle_dispatch(session, event)
         elif event.event_type == "load_complete":
-            self._handle_load_complete(session, event)
+            await self._handle_load_complete(session, event)
         elif event.event_type == "arrive":
-            self._handle_arrival(session, event)
+            await self._handle_arrival(session, event)
         elif event.event_type == "unload_complete":
-            self._handle_unload_complete(session, event)
+            await self._handle_unload_complete(session, event)
         elif event.event_type == "rest_complete":
-            self._handle_rest_complete(session, event)
+            await self._handle_rest_complete(session, event)
 
         if self.speed_multiplier >= 5000:
             return
@@ -602,7 +645,7 @@ class SimulationEngine:
             )
         )
 
-    def _handle_dispatch(self, session: Session, event: ScheduledEvent) -> None:
+    async def _handle_dispatch(self, session: Session, event: ScheduledEvent) -> None:
         vehicle = self.vehicles.get(event.vehicle_id)
         state = self.live_vehicle_states.get(event.vehicle_id)
         if vehicle is None or state is None:
@@ -631,7 +674,7 @@ class SimulationEngine:
         if leg == "return":
             state.critical_payload = False
             state.perishable_payload = False
-            route = self.route_planner.get_or_create_template(
+            route = await self.route_planner.get_or_create_template_async(
                 session, current_facility, self.facilities[objective.origin_facility_id]
             )
             eta = self.simulation_time + timedelta(minutes=route.duration_minutes)
@@ -664,7 +707,7 @@ class SimulationEngine:
         # ── Turbo mode fast path: skip decision engine, go direct ──
         if self.speed_multiplier >= 5000:
             destination = self.facilities[objective.destination_facility_id]
-            route = self.route_planner.get_or_create_template(session, current_facility, destination)
+            route = await self.route_planner.get_or_create_template_async(session, current_facility, destination)
             
             state.last_recommendation_action = "continue"
             
@@ -702,7 +745,7 @@ class SimulationEngine:
             if destination is None:
                 logger.warning("dispatch: destination %s not found for objective %s", destination_id, objective.id)
                 continue
-            route = self.route_planner.get_or_create_template(session, current_facility, destination)
+            route = await self.route_planner.get_or_create_template_async(session, current_facility, destination)
             route_data[destination_id] = route
             risk_lookup[destination_id] = self._route_risk(current_facility.city, destination.city)
         decision = self._select_dispatch_decision(
@@ -802,7 +845,7 @@ class SimulationEngine:
             },
         )
 
-    def _handle_load_complete(self, session: Session, event: ScheduledEvent) -> None:
+    async def _handle_load_complete(self, session: Session, event: ScheduledEvent) -> None:
         vehicle = self.vehicles.get(event.vehicle_id)
         state = self.live_vehicle_states.get(event.vehicle_id)
         objective = self.objectives.get(event.objective_id)
@@ -820,7 +863,7 @@ class SimulationEngine:
             origin_facility = self.facilities.get(event.payload.get("facility_id"))
             destination_facility = self.facilities.get(destination_id)
             if origin_facility and destination_facility:
-                route = self.route_planner.get_or_create_template(session, origin_facility, destination_facility)
+                route = await self.route_planner.get_or_create_template_async(session, origin_facility, destination_facility)
             else:
                 logger.warning("load_complete: no route found for vehicle %s -> %s", vehicle.id, destination_id)
                 return
@@ -850,7 +893,7 @@ class SimulationEngine:
             },
         )
 
-    def _handle_arrival(self, session: Session, event: ScheduledEvent) -> None:
+    async def _handle_arrival(self, session: Session, event: ScheduledEvent) -> None:
         vehicle = self.vehicles.get(event.vehicle_id)
         state = self.live_vehicle_states.get(event.vehicle_id)
         objective = self.objectives.get(event.objective_id)
@@ -897,7 +940,7 @@ class SimulationEngine:
             payload={"destination_id": destination_id, "facility_id": destination_id},
         )
 
-    def _handle_unload_complete(self, session: Session, event: ScheduledEvent) -> None:
+    async def _handle_unload_complete(self, session: Session, event: ScheduledEvent) -> None:
         vehicle = self.vehicles.get(event.vehicle_id)
         state = self.live_vehicle_states.get(event.vehicle_id)
         objective = self.objectives.get(event.objective_id)
@@ -962,7 +1005,7 @@ class SimulationEngine:
             priority=2,
         )
 
-    def _handle_rest_complete(self, session: Session, event: ScheduledEvent) -> None:
+    async def _handle_rest_complete(self, session: Session, event: ScheduledEvent) -> None:
         vehicle = self.vehicles.get(event.vehicle_id)
         state = self.live_vehicle_states.get(event.vehicle_id)
         if vehicle is None or state is None:
@@ -1659,8 +1702,9 @@ class SimulationEngine:
                 )
             )
 
-    def resolve_spotlight_decision(
+    async def resolve_spotlight_decision(
         self,
+        session: Session,
         vehicle: Vehicle,
         recommendation: Recommendation,
         objective: Objective,
@@ -1685,7 +1729,7 @@ class SimulationEngine:
             origin_facility = self.facilities.get(recommendation.current_facility_id)
             destination_facility = self.facilities.get(dest_id)
             if origin_facility and destination_facility:
-                route = self.route_planner.get_or_create_template(session, origin_facility, destination_facility)
+                route = await self.route_planner.get_or_create_template_async(session, origin_facility, destination_facility)
                 self.routes[route.route_key] = route
             else:
                 return
